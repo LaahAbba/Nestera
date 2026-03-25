@@ -6,7 +6,9 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import {
   ApiTags,
   ApiOperation,
@@ -21,7 +23,10 @@ import { UserSubscription } from './entities/user-subscription.entity';
 import { SubscribeDto } from './dto/subscribe.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { SavingsGoalProgress } from './savings.service';
+import {
+  SavingsGoalProgress,
+  UserSubscriptionWithLiveBalance,
+} from './savings.service';
 
 @ApiTags('savings')
 @Controller('savings')
@@ -29,6 +34,9 @@ export class SavingsController {
   constructor(private readonly savingsService: SavingsService) {}
 
   @Get('products')
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey('pools_all')
+  @CacheTTL(60000)
   @ApiOperation({ summary: 'List all savings products' })
   @ApiResponse({ status: 200, description: 'List of savings products' })
   async getProducts(): Promise<SavingsProduct[]> {
@@ -69,7 +77,7 @@ export class SavingsController {
   @ApiResponse({ status: 429, description: 'Too many requests' })
   async getMySubscriptions(
     @CurrentUser() user: { id: string; email: string },
-  ): Promise<UserSubscription[]> {
+  ): Promise<UserSubscriptionWithLiveBalance[]> {
     return await this.savingsService.findMySubscriptions(user.id);
   }
 
