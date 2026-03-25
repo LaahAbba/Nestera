@@ -27,7 +27,7 @@ export class IndexerService implements OnModuleInit {
     private readonly dlqRepo: Repository<DeadLetterEvent>,
     private readonly depositHandler: DepositHandler,
     private readonly yieldHandler: YieldHandler,
-  ) { }
+  ) {}
 
   onModuleInit() {
     this.logger.log('Blockchain indexer initialised.');

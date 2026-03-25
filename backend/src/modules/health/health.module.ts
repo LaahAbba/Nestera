@@ -15,6 +15,10 @@ import { DeadLetterEvent } from '../blockchain/entities/dead-letter-event.entity
     BlockchainModule,
   ],
   controllers: [HealthController],
-  providers: [TypeOrmHealthIndicator, IndexerHealthIndicator, RpcHealthIndicator],
+  providers: [
+    TypeOrmHealthIndicator,
+    IndexerHealthIndicator,
+    RpcHealthIndicator,
+  ],
 })
-export class HealthModule { }
+export class HealthModule {}

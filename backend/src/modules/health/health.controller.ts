@@ -13,7 +13,7 @@ export class HealthController {
     private readonly db: TypeOrmHealthIndicator,
     private readonly indexer: IndexerHealthIndicator,
     private readonly rpc: RpcHealthIndicator,
-  ) { }
+  ) {}
 
   @Get()
   @HealthCheck()
@@ -97,7 +97,8 @@ export class HealthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Readiness probe',
-    description: 'Readiness check for Kubernetes - validates critical dependencies',
+    description:
+      'Readiness check for Kubernetes - validates critical dependencies',
   })
   @ApiResponse({
     status: 200,

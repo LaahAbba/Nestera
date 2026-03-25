@@ -57,4 +57,4 @@ import { IndexerService } from './indexer.service';
     YieldHandler,
   ],
 })
-export class BlockchainModule { }
+export class BlockchainModule {}
