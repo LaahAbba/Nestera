@@ -31,6 +31,7 @@ import { UpdateGoalDto } from './dto/update-goal.dto';
 import { ProductDetailsDto } from './dto/product-details.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RpcThrottleGuard } from '../../common/guards/rpc-throttle.guard';
 import {
   SavingsGoalProgress,
   UserSubscriptionWithLiveBalance,
@@ -129,7 +130,7 @@ export class SavingsController {
 
   @Get('my-subscriptions')
   @Throttle({ rpc: { limit: 10, ttl: 60000 } })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RpcThrottleGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user subscriptions' })
   @ApiResponse({ status: 200, description: 'List of user subscriptions' })
@@ -143,7 +144,7 @@ export class SavingsController {
 
   @Get('my-goals')
   @Throttle({ rpc: { limit: 10, ttl: 60000 } })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RpcThrottleGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary:
