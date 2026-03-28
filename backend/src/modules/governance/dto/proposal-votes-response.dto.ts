@@ -43,4 +43,13 @@ export class ProposalVotesResponseDto {
 
   @ApiProperty({ type: [RecentVoterDto] })
   recentVoters: RecentVoterDto[];
+
+  @ApiProperty({
+    example: 120,
+    description: 'Total number of votes for this proposal',
+  })
+  total: number;
+
+  @ApiProperty({ example: 0, description: 'Current page index (0-based)' })
+  page: number;
 }

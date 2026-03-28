@@ -7,7 +7,10 @@ import { UserService } from '../user/user.service';
 import { DelegationResponseDto } from './dto/delegation-response.dto';
 import { ProposalListItemDto } from './dto/proposal-list-item.dto';
 import { ProposalVotesResponseDto } from './dto/proposal-votes-response.dto';
-import { GovernanceProposal, ProposalStatus } from './entities/governance-proposal.entity';
+import {
+  GovernanceProposal,
+  ProposalStatus,
+} from './entities/governance-proposal.entity';
 import { Vote, VoteDirection } from './entities/vote.entity';
 import { VotingPowerResponseDto } from './dto/voting-power-response.dto';
 
@@ -25,7 +28,10 @@ export class GovernanceService {
 
   async getProposals(status?: ProposalStatus): Promise<ProposalListItemDto[]> {
     const where = status ? { status } : {};
-    const proposals = await this.proposalRepo.find({ where, order: { createdAt: 'DESC' } });
+    const proposals = await this.proposalRepo.find({
+      where,
+      order: { createdAt: 'DESC' },
+    });
 
     if (proposals.length === 0) {
       return [];
@@ -34,21 +40,24 @@ export class GovernanceService {
     const proposalIds = proposals.map((p) => p.id);
 
     // Aggregate vote counts per proposal in a single query
-    const tallies: { proposalId: string; forCount: string; againstCount: string }[] =
-      await this.voteRepo
-        .createQueryBuilder('vote')
-        .select('vote.proposalId', 'proposalId')
-        .addSelect(
-          `SUM(CASE WHEN vote.direction = '${VoteDirection.FOR}' THEN 1 ELSE 0 END)`,
-          'forCount',
-        )
-        .addSelect(
-          `SUM(CASE WHEN vote.direction = '${VoteDirection.AGAINST}' THEN 1 ELSE 0 END)`,
-          'againstCount',
-        )
-        .where('vote.proposalId IN (:...ids)', { ids: proposalIds })
-        .groupBy('vote.proposalId')
-        .getRawMany();
+    const tallies: {
+      proposalId: string;
+      forCount: string;
+      againstCount: string;
+    }[] = await this.voteRepo
+      .createQueryBuilder('vote')
+      .select('vote.proposalId', 'proposalId')
+      .addSelect(
+        `SUM(CASE WHEN vote.direction = '${VoteDirection.FOR}' THEN 1 ELSE 0 END)`,
+        'forCount',
+      )
+      .addSelect(
+        `SUM(CASE WHEN vote.direction = '${VoteDirection.AGAINST}' THEN 1 ELSE 0 END)`,
+        'againstCount',
+      )
+      .where('vote.proposalId IN (:...ids)', { ids: proposalIds })
+      .groupBy('vote.proposalId')
+      .getRawMany();
 
     const tallyMap = new Map(tallies.map((t) => [t.proposalId, t]));
 
@@ -58,8 +67,12 @@ export class GovernanceService {
       const againstCount = tally ? Number(tally.againstCount) : 0;
       const totalCount = forCount + againstCount;
 
-      const forPercent = totalCount > 0 ? Math.round((forCount / totalCount) * 10000) / 100 : 0;
-      const againstPercent = totalCount > 0 ? Math.round((againstCount / totalCount) * 10000) / 100 : 0;
+      const forPercent =
+        totalCount > 0 ? Math.round((forCount / totalCount) * 10000) / 100 : 0;
+      const againstPercent =
+        totalCount > 0
+          ? Math.round((againstCount / totalCount) * 10000) / 100
+          : 0;
 
       return {
         id: proposal.id,
@@ -115,18 +128,18 @@ export class GovernanceService {
 
   async getProposalVotesByOnChainId(
     onChainId: number,
-    limit = 20,
+    page = 0,
   ): Promise<ProposalVotesResponseDto> {
     const proposal = await this.proposalRepo.findOneBy({ onChainId });
     if (!proposal) {
       throw new NotFoundException(`Proposal ${onChainId} not found`);
     }
 
-    const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
-    const votes = await this.voteRepo.find({
+    const [votes, total] = await this.voteRepo.findAndCount({
       where: { proposalId: proposal.id },
       order: { createdAt: 'DESC' },
-      take: safeLimit,
+      take: 20,
+      skip: page * 20,
     });
 
     let forWeight = 0;
@@ -158,6 +171,8 @@ export class GovernanceService {
         weight: String(vote.weight),
         votedAt: vote.createdAt.toISOString(),
       })),
+      total,
+      page,
     };
   }
 }

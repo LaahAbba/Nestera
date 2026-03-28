@@ -12,8 +12,8 @@
   },
   "lint-staged": {
     "backend/src/**/*.{ts,tsx}": [
-      "npx prettier --write backend/src/**/*.{ts,tsx}",
-      "npx eslint --fix backend/src/**/*.{ts,tsx}"
+      "npx prettier --write",
+      "backend/node_modules/.bin/eslint --fix --config backend/eslint.config.mjs"
     ]
   },
   "dependencies": {

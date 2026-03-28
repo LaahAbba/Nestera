@@ -21,18 +21,21 @@ export class GovernanceProposalsController {
   @Get()
   @ApiOperation({
     summary: 'List governance proposals',
-    description: 'Returns indexed proposals from the DB cache, optionally filtered by status.',
+    description:
+      'Returns indexed proposals from the DB cache, optionally filtered by status.',
   })
   @ApiQuery({
     name: 'status',
     required: false,
     enum: ProposalStatus,
-    description: 'Filter by proposal status (e.g. ACTIVE, PASSED, FAILED, CANCELLED)',
+    description:
+      'Filter by proposal status (e.g. ACTIVE, PASSED, FAILED, CANCELLED)',
     example: 'ACTIVE',
   })
   @ApiResponse({
     status: 200,
-    description: 'List of proposals with computed vote percentages and timeline boundaries',
+    description:
+      'List of proposals with computed vote percentages and timeline boundaries',
     type: [ProposalListItemDto],
   })
   getProposals(
@@ -42,8 +45,11 @@ export class GovernanceProposalsController {
 
     if (statusKey !== undefined) {
       // Accept both enum keys (ACTIVE) and enum values (Active)
-      const byKey = ProposalStatus[statusKey.toUpperCase() as keyof typeof ProposalStatus];
-      const byValue = Object.values(ProposalStatus).includes(statusKey as ProposalStatus)
+      const byKey =
+        ProposalStatus[statusKey.toUpperCase() as keyof typeof ProposalStatus];
+      const byValue = Object.values(ProposalStatus).includes(
+        statusKey as ProposalStatus,
+      )
         ? (statusKey as ProposalStatus)
         : undefined;
       status = byKey ?? byValue;
@@ -65,10 +71,10 @@ export class GovernanceProposalsController {
       'Returns a proposal vote tally plus the most recent voters for a given proposal onChainId.',
   })
   @ApiQuery({
-    name: 'limit',
+    name: 'page',
     required: false,
-    description: 'Maximum number of recent voter entries to return',
-    example: 20,
+    description: 'Zero-based page index (20 votes per page)',
+    example: 0,
   })
   @ApiResponse({
     status: 200,
@@ -77,8 +83,8 @@ export class GovernanceProposalsController {
   })
   getProposalVotes(
     @Param('id', ParseIntPipe) id: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('page', new DefaultValuePipe(0), ParseIntPipe) page: number,
   ): Promise<ProposalVotesResponseDto> {
-    return this.governanceService.getProposalVotesByOnChainId(id, limit);
+    return this.governanceService.getProposalVotesByOnChainId(id, page);
   }
 }
