@@ -6,6 +6,8 @@ import { PredictiveEvaluatorService } from './services/predictive-evaluator.serv
 import { SavingsProduct } from './entities/savings-product.entity';
 import { UserSubscription } from './entities/user-subscription.entity';
 import { SavingsGoal } from './entities/savings-goal.entity';
+import { WithdrawalRequest } from './entities/withdrawal-request.entity';
+import { Transaction } from '../transactions/entities/transaction.entity';
 import { User } from '../user/entities/user.entity';
 
 @Module({
@@ -14,6 +16,8 @@ import { User } from '../user/entities/user.entity';
       SavingsProduct,
       UserSubscription,
       SavingsGoal,
+      WithdrawalRequest,
+      Transaction,
       User,
     ]),
   ],
