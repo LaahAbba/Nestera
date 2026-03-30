@@ -21,10 +21,6 @@ import { Transaction } from '../transactions/entities/transaction.entity';
 
 @Module({
   imports: [
-    UserModule,
-    SavingsModule,
-    MailModule,
-    BlockchainModule,
     TypeOrmModule.forFeature([
       User,
       UserSubscription,
@@ -33,6 +29,10 @@ import { Transaction } from '../transactions/entities/transaction.entity';
       Transaction,
       AdminTransactionNote,
     ]),
+    UserModule,
+    SavingsModule,
+    MailModule,
+    BlockchainModule,
   ],
   controllers: [
     AdminController,
