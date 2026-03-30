@@ -47,28 +47,31 @@ export class MailService {
     }
   }
 
-  async sendInterestCreditedEmail(
+  async sendWithdrawalCompletedEmail(
     userEmail: string,
     name: string,
-    productName: string,
-    interestEarned: string,
-    newBalance: string,
+    amount: string,
+    penalty: string,
+    netAmount: string,
   ): Promise<void> {
     try {
       await this.mailerService.sendMail({
         to: userEmail,
-        subject: 'Interest Credited to Your Savings',
-        template: './interest-credited',
+        subject: 'Withdrawal Request Completed',
+        template: './withdrawal-completed',
         context: {
           name: name || 'User',
-          productName,
-          interestEarned,
-          newBalance,
+          amount,
+          penalty,
+          netAmount,
         },
       });
-      this.logger.log(`Interest credited email sent to ${userEmail}`);
+      this.logger.log(`Withdrawal completed email sent to ${userEmail}`);
     } catch (error) {
-      this.logger.error(`Failed to send interest credited email to ${userEmail}`, error);
+      this.logger.error(
+        `Failed to send withdrawal completed email to ${userEmail}`,
+        error,
+      );
     }
   }
 
@@ -149,6 +152,38 @@ export class MailService {
         `Failed to send waitlist availability email to ${userEmail}`,
         error,
       );
+    }
+  }
+
+  async sendSavingsAlertEmail(
+    userEmail: string,
+    name: string,
+    message: string,
+  ): Promise<void> {
+    try {
+      await this.mailerService.sendMail({
+        to: userEmail,
+        subject: 'Savings product alert',
+        template: './generic-notification',
+        context: {
+          name: name || 'User',
+          message,
+        },
+      });
+      this.logger.log(`Savings alert email sent to ${userEmail}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send savings alert email to ${userEmail}`,
+        error,
+      );
+    }
+  }
+
+  async sendRawMail(to: string, subject: string, text: string): Promise<void> {
+    try {
+      await this.mailerService.sendMail({ to, subject, text });
+    } catch (error) {
+      this.logger.error(`Failed to send raw email to ${to}`, error);
     }
   }
 }

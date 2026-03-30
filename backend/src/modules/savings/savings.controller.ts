@@ -28,13 +28,17 @@ import { SavingsProduct, RiskLevel } from './entities/savings-product.entity';
 import { UserSubscription } from './entities/user-subscription.entity';
 import { SavingsGoal } from './entities/savings-goal.entity';
 import { SubscribeDto } from './dto/subscribe.dto';
+import { WithdrawDto } from './dto/withdraw.dto';
+import { WithdrawalResponseDto } from './dto/withdrawal-response.dto';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { SavingsProductDto } from './dto/savings-product.dto';
 import { ProductDetailsDto } from './dto/product-details.dto';
+import { RecommendationResponseDto } from './dto/recommendation-response.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RpcThrottleGuard } from '../../common/guards/rpc-throttle.guard';
+import { RecommendationService } from './services/recommendation.service';
 import {
   SavingsGoalProgress,
   UserSubscriptionWithLiveBalance,
@@ -43,7 +47,10 @@ import {
 @ApiTags('savings')
 @Controller('savings')
 export class SavingsController {
-  constructor(private readonly savingsService: SavingsService) {}
+  constructor(
+    private readonly savingsService: SavingsService,
+    private readonly recommendationService: RecommendationService,
+  ) {}
 
   @Get('products')
   @UseInterceptors(CacheInterceptor)
@@ -91,7 +98,7 @@ export class SavingsController {
     description: 'Soroban RPC request timeout',
   })
   async getProductDetails(@Param('id') id: string): Promise<ProductDetailsDto> {
-    const { product, totalAssets } =
+    const { product, totalAssets, capacity } =
       await this.savingsService.findProductWithLiveData(id);
 
     const totalAssetsXlm = totalAssets / 10_000_000;
@@ -109,6 +116,11 @@ export class SavingsController {
       contractId: product.contractId,
       totalAssets,
       totalAssetsXlm,
+      maxCapacity: capacity.maxCapacity,
+      utilizedCapacity: capacity.utilizedCapacity,
+      availableCapacity: capacity.availableCapacity,
+      utilizationPercentage: capacity.utilizationPercentage,
+      isFull: capacity.isFull,
       riskLevel: product.riskLevel || RiskLevel.LOW,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
@@ -137,6 +149,49 @@ export class SavingsController {
       dto.productId,
       dto.amount,
     );
+  }
+
+  @Post('withdraw')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Request withdrawal from a savings subscription',
+    description:
+      'Creates a withdrawal request with penalty calculation for early withdrawal from locked products',
+  })
+  @ApiBody({ type: WithdrawDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Withdrawal request created',
+    type: WithdrawalResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or insufficient balance',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Subscription not found' })
+  async withdraw(
+    @Body() dto: WithdrawDto,
+    @CurrentUser() user: { id: string; email: string },
+  ): Promise<WithdrawalResponseDto> {
+    const withdrawal = await this.savingsService.createWithdrawalRequest(
+      user.id,
+      dto.subscriptionId,
+      dto.amount,
+      dto.reason,
+    );
+
+    return {
+      withdrawalId: withdrawal.id,
+      amount: Number(withdrawal.amount),
+      penalty: Number(withdrawal.penalty),
+      netAmount: Number(withdrawal.netAmount),
+      status: withdrawal.status.toLowerCase(),
+      estimatedCompletionTime:
+        withdrawal.estimatedCompletionTime?.toISOString() || '',
+    };
   }
 
   @Get('my-subscriptions')

@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
+import { GracefulShutdownInterceptor } from './common/interceptors/graceful-shutdown.interceptor';
 import { TieredThrottlerGuard } from './common/guards/tiered-throttler.guard';
 import { CommonModule } from './common/common.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -17,6 +19,9 @@ import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { BlockchainModule } from './modules/blockchain/blockchain.module';
 import { UserModule } from './modules/user/user.module';
+import { KycModule } from './modules/kyc/kyc.module';
+import { ChallengesModule } from './modules/challenges/challenges.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { MailModule } from './modules/mail/mail.module';
 import { RedisCacheModule } from './modules/cache/cache.module';
@@ -29,8 +34,13 @@ import { SavingsModule } from './modules/savings/savings.module';
 import { GovernanceModule } from './modules/governance/governance.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
+import { ReferralsModule } from './modules/referrals/referrals.module';
 import { TestRbacModule } from './test-rbac/test-rbac.module';
 import { TestThrottlingModule } from './test-throttling/test-throttling.module';
+import { ApiVersioningModule } from './common/versioning/api-versioning.module';
+import { BackupModule } from './modules/backup/backup.module';
+import { PerformanceModule } from './modules/performance/performance.module';
+import { GracefulShutdownService } from './common/services/graceful-shutdown.service';
 
 const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').required(),
@@ -66,6 +76,17 @@ const envValidationSchema = Joi.object({
   MAIL_USER: Joi.string().optional(),
   MAIL_PASS: Joi.string().optional(),
   MAIL_FROM: Joi.string().optional(),
+  KYC_PROVIDER_BASE_URL: Joi.string().uri().optional(),
+  KYC_PROVIDER_API_KEY: Joi.string().optional(),
+  KYC_PII_ENCRYPTION_KEY: Joi.string().min(16).optional(),
+
+  BACKUP_S3_BUCKET: Joi.string().optional(),
+  BACKUP_S3_REGION: Joi.string().optional(),
+  BACKUP_AWS_ACCESS_KEY_ID: Joi.string().optional(),
+  BACKUP_AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
+  BACKUP_ENCRYPTION_KEY: Joi.string().length(64).optional(), // 32-byte key as hex
+  BACKUP_RETENTION_DAYS: Joi.number().integer().min(1).default(30).optional(),
+  BACKUP_TMP_DIR: Joi.string().optional(),
 });
 
 @Module({
@@ -114,6 +135,7 @@ const envValidationSchema = Joi.object({
       },
     }),
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
@@ -154,6 +176,9 @@ const envValidationSchema = Joi.object({
     HealthModule,
     BlockchainModule,
     UserModule,
+    KycModule,
+    ChallengesModule,
+    AlertsModule,
     AdminModule,
     MailModule,
     WebhooksModule,
@@ -165,8 +190,12 @@ const envValidationSchema = Joi.object({
     GovernanceModule,
     NotificationsModule,
     TransactionsModule,
+    ReferralsModule,
     TestRbacModule,
     TestThrottlingModule,
+    ApiVersioningModule,
+    BackupModule,
+    PerformanceModule,
     CommonModule,
     ThrottlerModule.forRoot([
       {
@@ -189,6 +218,7 @@ const envValidationSchema = Joi.object({
   controllers: [AppController],
   providers: [
     AppService,
+    GracefulShutdownService,
     {
       provide: APP_GUARD,
       useClass: TieredThrottlerGuard,
@@ -200,6 +230,10 @@ const envValidationSchema = Joi.object({
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditLogInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: GracefulShutdownInterceptor,
     },
   ],
 })

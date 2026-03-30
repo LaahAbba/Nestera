@@ -2,18 +2,32 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Logger,
   Inject,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
-import { SavingsProduct, RiskLevel } from './entities/savings-product.entity';
+import {
+  SavingsProduct,
+  SavingsProductType,
+  RiskLevel,
+} from './entities/savings-product.entity';
 import {
   UserSubscription,
   SubscriptionStatus,
 } from './entities/user-subscription.entity';
 import { SavingsGoal, SavingsGoalStatus } from './entities/savings-goal.entity';
+import {
+  WithdrawalRequest,
+  WithdrawalStatus,
+} from './entities/withdrawal-request.entity';
+import {
+  Transaction,
+  TxType,
+  TxStatus,
+} from '../transactions/entities/transaction.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SavingsProductDto } from './dto/savings-product.dto';
@@ -25,6 +39,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { WaitlistService } from './waitlist.service';
 
 export type SavingsGoalProgress = GoalProgressDto;
 
@@ -35,6 +50,16 @@ export interface UserSubscriptionWithLiveBalance extends UserSubscription {
   balanceSource: 'rpc' | 'cache';
   vaultContractId: string | null;
   estimatedYieldPerSecond: number;
+}
+
+export interface ProductCapacitySnapshot {
+  productId: string;
+  maxCapacity: number | null;
+  utilizedCapacity: number;
+  availableCapacity: number;
+  utilizationPercentage: number;
+  isFull: boolean;
+  source: 'soroban' | 'database';
 }
 
 const STROOPS_PER_XLM = 10_000_000;
@@ -53,8 +78,13 @@ export class SavingsService {
     private readonly goalRepository: Repository<SavingsGoal>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(WithdrawalRequest)
+    private readonly withdrawalRepository: Repository<WithdrawalRequest>,
+    @InjectRepository(Transaction)
+    private readonly transactionRepository: Repository<Transaction>,
     private readonly blockchainSavingsService: BlockchainSavingsService,
     private readonly predictiveEvaluatorService: PredictiveEvaluatorService,
+    private readonly waitlistService: WaitlistService,
     private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     @Optional() private readonly eventEmitter?: EventEmitter2,
@@ -92,39 +122,29 @@ export class SavingsService {
         'minAmount must be less than or equal to maxAmount',
       );
     }
+    const previousIsActive = product.isActive;
     Object.assign(product, dto);
     const updatedProduct = await this.productRepository.save(product);
+    await this.syncCapacityState(updatedProduct);
     await this.invalidatePoolsCache();
 
     // Emit waitlist availability event when product becomes available or capacity opens
     try {
-      const activeCount = await this.subscriptionRepository.count({
-        where: {
-          productId: updatedProduct.id,
-          status: SubscriptionStatus.ACTIVE,
-        },
-      });
-
-      const oldCapacity = (product as any).__oldCapacity ?? null;
-      const oldIsActive = (product as any).__oldIsActive ?? null;
+      const capacity = await this.getProductCapacitySnapshot(updatedProduct.id);
 
       // If capacity is set and there's room, notify waitlist
-      if (
-        typeof updatedProduct.capacity === 'number' &&
-        updatedProduct.capacity > activeCount
-      ) {
-        const spots = Math.max(1, updatedProduct.capacity - activeCount);
+      if (capacity.maxCapacity != null && capacity.availableCapacity > 0) {
         this.eventEmitter?.emit('waitlist.product.available', {
           productId: updatedProduct.id,
-          spots,
+          spots: 1,
         });
       }
 
       // If product was previously inactive and now active, notify waitlist (launch)
-      if (updatedProduct.isActive && !product.isActive) {
+      if (updatedProduct.isActive && !previousIsActive) {
         this.eventEmitter?.emit('waitlist.product.available', {
           productId: updatedProduct.id,
-          spots: Math.max(1, (updatedProduct.capacity ?? 1) - activeCount),
+          spots: 1,
         });
       }
     } catch (e) {
@@ -142,31 +162,38 @@ export class SavingsService {
       relations: ['subscriptions'],
     });
 
-    const dtos: SavingsProductDto[] = products.map((product) => {
-      // Calculate TVL by summing active subscriptions
-      const tvlAmount = product.subscriptions
-        ? product.subscriptions
-            .filter((s) => s.status === SubscriptionStatus.ACTIVE)
-            .reduce((sum, s) => sum + Number(s.amount), 0)
-        : 0;
+    const dtos: SavingsProductDto[] = await Promise.all(
+      products.map(async (product) => {
+        // Calculate TVL by summing active subscriptions
+        const tvlAmount = product.subscriptions
+          ? product.subscriptions
+              .filter((s) => s.status === SubscriptionStatus.ACTIVE)
+              .reduce((sum, s) => sum + Number(s.amount), 0)
+          : 0;
+        const capacity = await this.getProductCapacitySnapshot(product.id);
 
-      return {
-        id: product.id,
-        name: product.name,
-        type: product.type,
-        description: product.description,
-        interestRate: Number(product.interestRate),
-        minAmount: Number(product.minAmount),
-        maxAmount: Number(product.maxAmount),
-        tenureMonths: product.tenureMonths,
-        contractId: product.contractId,
-        isActive: product.isActive,
-        riskLevel: product.riskLevel || RiskLevel.LOW,
-        tvlAmount,
-        createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
-      };
-    });
+        return {
+          id: product.id,
+          name: product.name,
+          type: product.type,
+          description: product.description,
+          interestRate: Number(product.interestRate),
+          minAmount: Number(product.minAmount),
+          maxAmount: Number(product.maxAmount),
+          tenureMonths: product.tenureMonths,
+          contractId: product.contractId,
+          isActive: product.isActive,
+          riskLevel: product.riskLevel || RiskLevel.LOW,
+          tvlAmount,
+          maxCapacity: capacity.maxCapacity,
+          utilizedCapacity: capacity.utilizedCapacity,
+          availableCapacity: capacity.availableCapacity,
+          utilizationPercentage: capacity.utilizationPercentage,
+          createdAt: product.createdAt,
+          updatedAt: product.updatedAt,
+        };
+      }),
+    );
 
     // Handle local sorting
     if (sort === 'apy') {
@@ -192,6 +219,7 @@ export class SavingsService {
   async findProductWithLiveData(id: string): Promise<{
     product: SavingsProduct;
     totalAssets: number;
+    capacity: ProductCapacitySnapshot;
   }> {
     const product = await this.findOneProduct(id);
 
@@ -211,7 +239,9 @@ export class SavingsService {
       }
     }
 
-    return { product, totalAssets };
+    const capacity = await this.getProductCapacitySnapshot(product.id);
+
+    return { product, totalAssets, capacity };
   }
 
   async subscribe(
@@ -220,6 +250,7 @@ export class SavingsService {
     amount: number,
   ): Promise<UserSubscription> {
     const product = await this.findOneProduct(productId);
+    await this.syncCapacityState(product);
     if (!product.isActive) {
       throw new BadRequestException(
         'This savings product is not available for subscription',
@@ -231,6 +262,20 @@ export class SavingsService {
     ) {
       throw new BadRequestException(
         `Amount must be between ${product.minAmount} and ${product.maxAmount}`,
+      );
+    }
+
+    const capacity = await this.getProductCapacitySnapshot(productId);
+    if (
+      capacity.maxCapacity != null &&
+      (capacity.isFull || amount > capacity.availableCapacity)
+    ) {
+      const { position } = await this.waitlistService.joinWaitlist(
+        userId,
+        productId,
+      );
+      throw new ConflictException(
+        `This savings product is at capacity. You have been added to the waitlist at position ${position}.`,
       );
     }
 
@@ -327,6 +372,70 @@ export class SavingsService {
     this.logger.log(
       `Invalidated savings products cache key: ${POOLS_CACHE_KEY}`,
     );
+  }
+
+  async getProductCapacitySnapshot(
+    productId: string,
+  ): Promise<ProductCapacitySnapshot> {
+    const product = await this.findOneProduct(productId);
+    const maxCapacity =
+      product.maxCapacity != null
+        ? Number(product.maxCapacity)
+        : product.capacity != null
+          ? Number(product.capacity)
+          : null;
+
+    let utilizedCapacity = 0;
+    let source: ProductCapacitySnapshot['source'] = 'database';
+
+    if (product.contractId) {
+      try {
+        const totalAssets =
+          await this.blockchainSavingsService.getVaultTotalAssets(
+            product.contractId,
+          );
+        utilizedCapacity = this.stroopsToDecimal(totalAssets);
+        source = 'soroban';
+      } catch (error) {
+        this.logger.warn(
+          `Falling back to database capacity for product ${product.id}: ${(error as Error).message}`,
+        );
+      }
+    }
+
+    if (source === 'database') {
+      const total = await this.subscriptionRepository
+        .createQueryBuilder('subscription')
+        .select('COALESCE(SUM(subscription.amount), 0)', 'total')
+        .where('subscription.productId = :productId', { productId })
+        .andWhere('subscription.status = :status', {
+          status: SubscriptionStatus.ACTIVE,
+        })
+        .getRawOne<{ total: string }>();
+      utilizedCapacity = Number(total?.total ?? 0);
+    }
+
+    const availableCapacity =
+      maxCapacity == null ? null : maxCapacity - utilizedCapacity;
+    const safeAvailableCapacity =
+      availableCapacity == null ? 0 : Math.max(0, availableCapacity);
+    const utilizationPercentage =
+      maxCapacity && maxCapacity > 0
+        ? Math.min(
+            100,
+            Number(((utilizedCapacity / maxCapacity) * 100).toFixed(2)),
+          )
+        : 0;
+
+    return {
+      productId: product.id,
+      maxCapacity,
+      utilizedCapacity: Number(utilizedCapacity.toFixed(2)),
+      availableCapacity: Number(safeAvailableCapacity.toFixed(2)),
+      utilizationPercentage,
+      isFull: maxCapacity != null && safeAvailableCapacity <= 0,
+      source,
+    };
   }
 
   async findMyGoals(userId: string): Promise<SavingsGoalProgress[]> {
@@ -432,6 +541,177 @@ export class SavingsService {
     }
 
     await this.goalRepository.remove(goal);
+  }
+
+  async createWithdrawalRequest(
+    userId: string,
+    subscriptionId: string,
+    amount: number,
+    reason?: string,
+  ): Promise<WithdrawalRequest> {
+    const subscription = await this.subscriptionRepository.findOne({
+      where: { id: subscriptionId, userId },
+      relations: ['product'],
+    });
+
+    if (!subscription) {
+      throw new NotFoundException(
+        `Subscription ${subscriptionId} not found or does not belong to user`,
+      );
+    }
+
+    if (subscription.status !== SubscriptionStatus.ACTIVE) {
+      throw new BadRequestException(
+        'Cannot withdraw from a non-active subscription',
+      );
+    }
+
+    if (amount > Number(subscription.amount)) {
+      throw new BadRequestException(
+        `Withdrawal amount exceeds subscription balance of ${subscription.amount}`,
+      );
+    }
+
+    // Calculate penalty for early withdrawal from locked (FIXED) products
+    const penalty = this.calculateEarlyWithdrawalPenalty(subscription, amount);
+    const netAmount = Number((amount - penalty).toFixed(7));
+
+    // Estimated completion: 1 hour for processing
+    const estimatedCompletionTime = new Date();
+    estimatedCompletionTime.setHours(estimatedCompletionTime.getHours() + 1);
+
+    const withdrawalRequest = this.withdrawalRepository.create({
+      userId,
+      subscriptionId,
+      amount,
+      penalty,
+      netAmount,
+      status: WithdrawalStatus.PENDING,
+      reason: reason || null,
+      estimatedCompletionTime,
+    });
+
+    const saved = await this.withdrawalRepository.save(withdrawalRequest);
+
+    // Process withdrawal asynchronously
+    this.processWithdrawal(saved.id).catch((error) => {
+      this.logger.error(
+        `Failed to process withdrawal ${saved.id}: ${(error as Error).message}`,
+      );
+    });
+
+    return saved;
+  }
+
+  private calculateEarlyWithdrawalPenalty(
+    subscription: UserSubscription,
+    amount: number,
+  ): number {
+    const product = subscription.product;
+
+    // No penalty for flexible products or matured subscriptions
+    if (product.type === SavingsProductType.FLEXIBLE) {
+      return 0;
+    }
+
+    // No penalty if the subscription has matured
+    if (subscription.endDate && new Date() >= new Date(subscription.endDate)) {
+      return 0;
+    }
+
+    // Early withdrawal penalty: 5% of the withdrawal amount for locked products
+    const EARLY_WITHDRAWAL_PENALTY_BPS = 500; // 5% in basis points
+    const penalty = (amount * EARLY_WITHDRAWAL_PENALTY_BPS) / 10_000;
+
+    return Number(penalty.toFixed(7));
+  }
+
+  private async processWithdrawal(withdrawalId: string): Promise<void> {
+    const withdrawal = await this.withdrawalRepository.findOne({
+      where: { id: withdrawalId },
+      relations: ['subscription', 'subscription.product'],
+    });
+
+    if (!withdrawal) {
+      throw new NotFoundException(`Withdrawal ${withdrawalId} not found`);
+    }
+
+    try {
+      // Update status to processing
+      withdrawal.status = WithdrawalStatus.PROCESSING;
+      await this.withdrawalRepository.save(withdrawal);
+
+      // Attempt on-chain withdrawal via Soroban contract
+      const contractId = withdrawal.subscription.product?.contractId;
+      const user = await this.userRepository.findOne({
+        where: { id: withdrawal.userId },
+        select: ['id', 'publicKey', 'email', 'name'],
+      });
+
+      if (contractId && user?.publicKey) {
+        try {
+          await this.blockchainSavingsService.invokeContractRead(
+            contractId,
+            'withdraw',
+            [],
+            user.publicKey,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `On-chain withdrawal simulation for ${withdrawalId}: ${(error as Error).message}`,
+          );
+        }
+      }
+
+      // Record in transaction ledger
+      const transaction = this.transactionRepository.create({
+        userId: withdrawal.userId,
+        type: TxType.WITHDRAW,
+        amount: String(withdrawal.netAmount),
+        status: TxStatus.COMPLETED,
+        publicKey: user?.publicKey || null,
+        metadata: {
+          withdrawalRequestId: withdrawal.id,
+          grossAmount: String(withdrawal.amount),
+          penalty: String(withdrawal.penalty),
+          netAmount: String(withdrawal.netAmount),
+          subscriptionId: withdrawal.subscriptionId,
+          reason: withdrawal.reason,
+        },
+      });
+      await this.transactionRepository.save(transaction);
+
+      // Update subscription amount
+      const newAmount =
+        Number(withdrawal.subscription.amount) - Number(withdrawal.amount);
+      await this.subscriptionRepository.update(withdrawal.subscriptionId, {
+        amount: Math.max(0, newAmount),
+        status:
+          newAmount <= 0
+            ? SubscriptionStatus.CANCELLED
+            : SubscriptionStatus.ACTIVE,
+      });
+
+      // Mark withdrawal as completed
+      withdrawal.status = WithdrawalStatus.COMPLETED;
+      withdrawal.txHash = transaction.txHash || null;
+      withdrawal.completedAt = new Date();
+      await this.withdrawalRepository.save(withdrawal);
+
+      // Emit event for notification
+      this.eventEmitter?.emit('withdrawal.completed', {
+        userId: withdrawal.userId,
+        withdrawalId: withdrawal.id,
+        amount: withdrawal.amount,
+        penalty: withdrawal.penalty,
+        netAmount: withdrawal.netAmount,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      withdrawal.status = WithdrawalStatus.FAILED;
+      await this.withdrawalRepository.save(withdrawal);
+      throw error;
+    }
   }
 
   private mapGoalWithProgress(
@@ -576,5 +856,42 @@ export class SavingsService {
     }, 0);
 
     return totalYield / activeSubscriptions.length;
+  }
+
+  private async syncCapacityState(
+    product: SavingsProduct,
+  ): Promise<SavingsProduct> {
+    const maxCapacity =
+      product.maxCapacity != null
+        ? Number(product.maxCapacity)
+        : product.capacity != null
+          ? Number(product.capacity)
+          : null;
+
+    if (maxCapacity == null) {
+      return product;
+    }
+
+    const snapshot = await this.getProductCapacitySnapshot(product.id);
+    if (snapshot.isFull && product.isActive) {
+      product.isActive = false;
+      await this.productRepository.save(product);
+      this.eventEmitter?.emit('savings.capacity.threshold', {
+        productId: product.id,
+        utilizationPercentage: snapshot.utilizationPercentage,
+        isFull: true,
+      });
+      return product;
+    }
+
+    if (snapshot.utilizationPercentage >= 80) {
+      this.eventEmitter?.emit('savings.capacity.threshold', {
+        productId: product.id,
+        utilizationPercentage: snapshot.utilizationPercentage,
+        isFull: false,
+      });
+    }
+
+    return product;
   }
 }

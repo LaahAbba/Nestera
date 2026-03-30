@@ -8,11 +8,21 @@ import { MailService } from '../mail/mail.service';
 import { User } from '../user/entities/user.entity';
 import { WaitlistEntry } from '../savings/entities/waitlist-entry.entity';
 import { WaitlistEvent } from '../savings/entities/waitlist-event.entity';
+import { Role } from '../../common/enums/role.enum';
 
 export interface SweepCompletedEvent {
   userId: string;
   amount: string;
   publicKey: string;
+  timestamp: Date;
+}
+
+export interface WithdrawalCompletedEvent {
+  userId: string;
+  withdrawalId: string;
+  amount: number;
+  penalty: number;
+  netAmount: number;
   timestamp: Date;
 }
 
@@ -100,49 +110,65 @@ export class NotificationsService {
   }
 
   /**
-   * Listen to interest.credited event and notify users of daily interest
+   * Listen to withdrawal.completed event and create notifications
    */
-  @OnEvent('interest.credited')
-  async handleInterestCredited(event: InterestCreditedEvent) {
-    this.logger.log(`Processing interest.credited event for user ${event.userId}`);
+  @OnEvent('withdrawal.completed')
+  async handleWithdrawalCompleted(event: WithdrawalCompletedEvent) {
+    this.logger.log(
+      `Processing withdrawal.completed event for user ${event.userId}`,
+    );
 
     try {
-      const user = await this.userRepository.findOne({ where: { id: event.userId } });
+      const user = await this.userRepository.findOne({
+        where: { id: event.userId },
+      });
+
       if (!user) {
-        this.logger.warn(`User ${event.userId} not found for interest notification`);
+        this.logger.warn(
+          `User ${event.userId} not found for withdrawal notification`,
+        );
         return;
       }
 
       const preferences = await this.getOrCreatePreferences(event.userId);
 
+      const penaltyNote =
+        event.penalty > 0
+          ? ` An early withdrawal penalty of ${event.penalty} was applied.`
+          : '';
+
       if (preferences.inAppNotifications) {
         await this.createNotification({
           userId: event.userId,
-          type: NotificationType.INTEREST_CREDITED,
-          title: 'Interest Credited',
-          message: `${event.interestEarned} interest has been credited to your ${event.productName} savings.`,
+          type: NotificationType.WITHDRAWAL_COMPLETED,
+          title: 'Withdrawal Completed',
+          message: `Your withdrawal of ${event.netAmount} has been completed.${penaltyNote}`,
           metadata: {
-            subscriptionId: event.subscriptionId,
-            productName: event.productName,
-            interestEarned: event.interestEarned,
-            newBalance: event.newBalance,
-            calculationDate: event.calculationDate,
+            withdrawalId: event.withdrawalId,
+            amount: event.amount,
+            penalty: event.penalty,
+            netAmount: event.netAmount,
+            timestamp: event.timestamp,
           },
         });
       }
 
       if (preferences.emailNotifications) {
-        await this.mailService.sendInterestCreditedEmail(
+        await this.mailService.sendWithdrawalCompletedEmail(
           user.email,
           user.name || 'User',
-          event.productName,
-          event.interestEarned,
-          event.newBalance,
+          String(event.amount),
+          String(event.penalty),
+          String(event.netAmount),
         );
       }
+
+      this.logger.log(
+        `Withdrawal notification processed for user ${event.userId}`,
+      );
     } catch (error) {
       this.logger.error(
-        `Error processing interest.credited event for user ${event.userId}`,
+        `Error processing withdrawal.completed event for user ${event.userId}`,
         error,
       );
     }
@@ -396,6 +422,48 @@ export class NotificationsService {
     } catch (error) {
       this.logger.error(
         `Error handling waitlist availability for product ${event.productId}`,
+        error,
+      );
+    }
+  }
+
+  @OnEvent('savings.capacity.threshold')
+  async handleCapacityAlert(event: {
+    productId: string;
+    utilizationPercentage: number;
+    isFull: boolean;
+  }) {
+    try {
+      const admins = await this.userRepository.find({
+        where: { role: Role.ADMIN },
+        select: ['id'],
+      });
+
+      if (!admins.length) {
+        return;
+      }
+
+      const title = event.isFull
+        ? 'Savings product auto-deactivated'
+        : 'Savings product nearing capacity';
+      const message = event.isFull
+        ? `Product ${event.productId} reached maximum capacity and was auto-deactivated.`
+        : `Product ${event.productId} is ${event.utilizationPercentage}% utilized.`;
+
+      await Promise.all(
+        admins.map((admin) =>
+          this.createNotification({
+            userId: admin.id,
+            type: NotificationType.ADMIN_CAPACITY_ALERT,
+            title,
+            message,
+            metadata: event,
+          }),
+        ),
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error processing savings.capacity.threshold for product ${event.productId}`,
         error,
       );
     }

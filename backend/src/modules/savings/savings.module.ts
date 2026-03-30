@@ -4,11 +4,12 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { SavingsController } from './savings.controller';
 import { SavingsService } from './savings.service';
 import { PredictiveEvaluatorService } from './services/predictive-evaluator.service';
-import { InterestCalculationService } from './services/interest-calculation.service';
+import { RecommendationService } from './services/recommendation.service';
 import { SavingsProduct } from './entities/savings-product.entity';
 import { UserSubscription } from './entities/user-subscription.entity';
 import { SavingsGoal } from './entities/savings-goal.entity';
-import { InterestHistory } from './entities/interest-history.entity';
+import { WithdrawalRequest } from './entities/withdrawal-request.entity';
+import { Transaction } from '../transactions/entities/transaction.entity';
 import { User } from '../user/entities/user.entity';
 import { WaitlistEntry } from './entities/waitlist-entry.entity';
 import { WaitlistEvent } from './entities/waitlist-event.entity';
@@ -22,7 +23,8 @@ import { WaitlistController } from './waitlist.controller';
       SavingsProduct,
       UserSubscription,
       SavingsGoal,
-      InterestHistory,
+      WithdrawalRequest,
+      Transaction,
       User,
       WaitlistEntry,
       WaitlistEvent,
