@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
+import { GracefulShutdownInterceptor } from './common/interceptors/graceful-shutdown.interceptor';
 import { TieredThrottlerGuard } from './common/guards/tiered-throttler.guard';
 import { CommonModule } from './common/common.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -38,6 +39,8 @@ import { TestRbacModule } from './test-rbac/test-rbac.module';
 import { TestThrottlingModule } from './test-throttling/test-throttling.module';
 import { ApiVersioningModule } from './common/versioning/api-versioning.module';
 import { BackupModule } from './modules/backup/backup.module';
+import { PerformanceModule } from './modules/performance/performance.module';
+import { GracefulShutdownService } from './common/services/graceful-shutdown.service';
 
 const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').required(),
@@ -192,6 +195,7 @@ const envValidationSchema = Joi.object({
     TestThrottlingModule,
     ApiVersioningModule,
     BackupModule,
+    PerformanceModule,
     CommonModule,
     ThrottlerModule.forRoot([
       {
@@ -214,6 +218,7 @@ const envValidationSchema = Joi.object({
   controllers: [AppController],
   providers: [
     AppService,
+    GracefulShutdownService,
     {
       provide: APP_GUARD,
       useClass: TieredThrottlerGuard,
@@ -225,6 +230,10 @@ const envValidationSchema = Joi.object({
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditLogInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: GracefulShutdownInterceptor,
     },
   ],
 })
