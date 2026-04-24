@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { scValToNative, xdr } from '@stellar/stellar-sdk';
 import {
   LedgerTransaction,
+  LedgerTransactionStatus,
   LedgerTransactionType,
 } from '../entities/transaction.entity';
 import {
@@ -77,6 +78,7 @@ export class WithdrawHandler {
           amount: payload.amount,
           publicKey: payload.publicKey,
           eventId,
+          status: LedgerTransactionStatus.COMPLETED,
           transactionHash:
             typeof event.txHash === 'string' ? event.txHash : null,
           ledgerSequence:
@@ -104,9 +106,13 @@ export class WithdrawHandler {
         );
       }
 
-      subscription.amount = Number(subscription.amount) - amountAsNumber;
-
-      await subRepo.save(subscription);
+      // Decrement the amount natively in the database to ensure atomicity and precision
+      await manager.decrement(
+        UserSubscription,
+        { id: subscription.id },
+        'amount',
+        amountAsNumber,
+      );
     });
 
     return true;
@@ -119,7 +125,25 @@ export class WithdrawHandler {
 
     const first = topic[0];
     const normalized = this.toHex(first);
-    return normalized === WithdrawHandler.WITHDRAW_HASH_HEX;
+
+    // Some contracts emit the symbol 'Withdraw' directly, others emit its SHA256 hash
+    if (normalized === WithdrawHandler.WITHDRAW_HASH_HEX) {
+      return true;
+    }
+
+    // Check if it's the symbol 'Withdraw' (XDR encoded)
+    if (typeof first === 'string') {
+      try {
+        const scVal = xdr.ScVal.fromXDR(first, 'base64');
+        if (scValToNative(scVal) === 'Withdraw') {
+          return true;
+        }
+      } catch {
+        // Not XDR, ignore
+      }
+    }
+
+    return false;
   }
 
   private extractPayload(value: unknown): WithdrawPayload {
@@ -132,8 +156,11 @@ export class WithdrawHandler {
         'userPublicKey',
         'user',
         'address',
+        'to',
+        'from',
       ]) ?? '';
-    const amountRaw = asRecord['amount'];
+    const amountRaw =
+      asRecord['amount'] ?? asRecord['value'] ?? asRecord['amt'];
 
     const amount =
       typeof amountRaw === 'bigint'

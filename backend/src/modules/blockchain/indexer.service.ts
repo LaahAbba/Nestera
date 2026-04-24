@@ -7,6 +7,7 @@ import { rpc } from '@stellar/stellar-sdk';
 import { DeadLetterEvent } from './entities/dead-letter-event.entity';
 import { IndexerState } from './entities/indexer-state.entity';
 import { DepositHandler } from './event-handlers/deposit.handler';
+import { WithdrawHandler } from './event-handlers/withdraw.handler';
 import { YieldHandler } from './event-handlers/yield.handler';
 import { StellarService } from './stellar.service';
 import { SavingsProduct } from '../savings/entities/savings-product.entity';
@@ -43,6 +44,7 @@ export class IndexerService implements OnModuleInit {
     @InjectRepository(SavingsProduct)
     private readonly savingsProductRepo: Repository<SavingsProduct>,
     private readonly depositHandler: DepositHandler,
+    private readonly withdrawHandler: WithdrawHandler,
     private readonly yieldHandler: YieldHandler,
   ) {}
 
@@ -62,36 +64,46 @@ export class IndexerService implements OnModuleInit {
   @Cron(CronExpression.EVERY_5_SECONDS)
   async runIndexerCycle(): Promise<void> {
     if (!this.indexerState) return;
-    if (this.contractIds.size === 0) return;
 
-    let events: SorobanEvent[] = [];
-
-    try {
-      events = await this.fetchEvents();
-    } catch (err) {
-      this.logger.error(`Failed to fetch events: ${(err as Error).message}`);
-      this.indexerState.updatedAt = new Date();
-      await this.saveIndexerState();
+    // Reload contract IDs to ensure we're watching any new active products
+    await this.loadContractIds();
+    if (this.contractIds.size === 0) {
+      this.logger.debug('No active contracts to monitor');
       return;
     }
 
-    let processed = 0;
-    let failed = 0;
+    try {
+      const events = await this.fetchEvents();
 
-    for (const event of events) {
-      const ok = await this.processEvent(event);
-      if (ok) {
-        processed++;
-      } else {
-        failed++;
+      if (events.length === 0) {
+        this.logger.debug('No new events found');
+        return;
       }
+
+      let processed = 0;
+      let failed = 0;
+
+      for (const event of events) {
+        const ok = await this.processEvent(event);
+        if (ok) {
+          processed++;
+        } else {
+          failed++;
+        }
+      }
+
+      this.logger.log(
+        `Processed ${processed} events (Failed: ${failed}) from ledger ${events[0].ledger} to ${events[events.length - 1].ledger}`,
+      );
+
+      this.indexerState.totalEventsProcessed += processed;
+      this.indexerState.totalEventsFailed += failed;
+      this.indexerState.updatedAt = new Date();
+
+      await this.saveIndexerState();
+    } catch (err) {
+      this.logger.error(`Indexer cycle failed: ${(err as Error).message}`);
     }
-
-    this.indexerState.totalEventsProcessed += processed;
-    this.indexerState.totalEventsFailed += failed;
-    this.indexerState.updatedAt = new Date();
-
-    await this.saveIndexerState();
   }
 
   private async initializeIndexerState() {
@@ -116,11 +128,12 @@ export class IndexerService implements OnModuleInit {
       where: { isActive: true },
     });
 
-    this.contractIds.clear();
-
+    const newSet = new Set<string>();
     for (const p of products) {
-      if (p.contractId) this.contractIds.add(p.contractId);
+      if (p.contractId) newSet.add(p.contractId);
     }
+
+    this.contractIds = newSet;
   }
 
   private async saveIndexerState() {
@@ -144,6 +157,9 @@ export class IndexerService implements OnModuleInit {
       return true;
     } catch (err) {
       const msg = (err as Error).message;
+      this.logger.error(
+        `FAILURE at Ledger ${event.ledger}: Processing of event ${event.id} crashed. JSON: ${JSON.stringify(event)}. Error: ${msg}`,
+      );
 
       await this.dlqRepo.save(
         this.dlqRepo.create({
@@ -159,34 +175,29 @@ export class IndexerService implements OnModuleInit {
 
   private async handleEvent(event: SorobanEvent): Promise<void> {
     if (await this.depositHandler.handle(event)) return;
+    if (await this.withdrawHandler.handle(event)) return;
     if (await this.yieldHandler.handle(event)) return;
 
     this.logger.debug(`Unhandled event: ${JSON.stringify(event.topic)}`);
   }
 
   private async fetchEvents(): Promise<SorobanEvent[]> {
-    if (!this.rpcServer || !this.indexerState) return [];
+    if (!this.indexerState) return [];
 
-    const results: SorobanEvent[] = [];
+    const rpcEvents = await this.stellarService.getEvents(
+      this.indexerState.lastProcessedLedger + 1,
+      Array.from(this.contractIds),
+    );
 
-    for (const contractId of this.contractIds) {
-      const rpcEvents = await (this.rpcServer as any).getEvents({
-        startLedger: this.indexerState.lastProcessedLedger + 1,
-        filters: [{ contractIds: [contractId] }],
-      });
-
-      for (const e of rpcEvents.events || []) {
-        results.push({
-          id: e.id,
-          ledger: parseInt(e.ledger, 10),
-          topic: e.topic,
-          value: e.value,
-          txHash: e.txHash,
-        });
-      }
-    }
-
-    return results.sort((a, b) => a.ledger - b.ledger);
+    return rpcEvents
+      .map((e) => ({
+        id: e.id,
+        ledger: parseInt(e.ledger, 10),
+        topic: e.topic,
+        value: e.value,
+        txHash: e.txHash,
+      }))
+      .sort((a, b) => a.ledger - b.ledger);
   }
 
   getIndexerState() {

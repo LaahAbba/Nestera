@@ -69,6 +69,16 @@ export class Transaction extends BaseEntity {
   @CreateDateColumn()
   createdAt: Date;
 
+  @Column({ type: 'boolean', default: false })
+  flagged: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  category: string | null;
+
+  // Tags stored as postgres text[] for efficient filtering/overlap checks
+  @Column('text', { array: true, default: () => 'ARRAY[]::text[]' })
+  tags: string[];
+
   get transactionHash(): string | null | undefined {
     return this.txHash;
   }

@@ -3,6 +3,8 @@ import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../modules/user/user.service';
@@ -17,12 +19,14 @@ import {
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import * as StellarSdk from '@stellar/stellar-sdk';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly eventEmitter: EventEmitter2,
     // @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -38,6 +42,14 @@ export class AuthService {
       password: hashedPassword,
     });
 
+    // Apply referral code if provided
+    if (dto.referralCode) {
+      this.eventEmitter.emit('user.signup-with-referral', {
+        userId: user.id,
+        referralCode: dto.referralCode,
+      });
+    }
+
     return {
       user,
       accessToken: this.generateToken(user.id, user.email, user.role),
@@ -50,8 +62,23 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Check if 2FA is enabled
+    const fullUser = await this.userService.findByEmail(dto.email);
+    if (fullUser?.twoFactorEnabled) {
+      return {
+        requiresTwoFactor: true,
+        userId: user.id,
+        message: 'Please provide your 2FA token',
+      };
+    }
+
     return {
-      accessToken: this.generateToken(user.id, user.email, user.role),
+      accessToken: this.generateToken(
+        user.id,
+        user.email,
+        user.role,
+        user.kycStatus,
+      ),
     };
   }
 
@@ -64,8 +91,13 @@ export class AuthService {
     return null;
   }
 
-  private generateToken(userId: string, email: string, role = 'USER') {
-    return this.jwtService.sign({ sub: userId, email, role });
+  private generateToken(
+    userId: string,
+    email: string,
+    role = 'USER',
+    kycStatus = 'NOT_SUBMITTED',
+  ) {
+    return this.jwtService.sign({ sub: userId, email, role, kycStatus });
   }
 
   async generateNonce(publicKey: string): Promise<{ nonce: string }> {
