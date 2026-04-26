@@ -2,16 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserRewardProfile } from './entities/user-reward-profile.entity';
-import { UserSubscription, SubscriptionStatus } from '../savings/entities/user-subscription.entity';
-import { LeaderboardQueryDto, LeaderboardPeriod } from './dto/leaderboard-query.dto';
+import {
+  UserSubscription,
+  SubscriptionStatus,
+} from '../savings/entities/user-subscription.entity';
+import {
+  LeaderboardQueryDto,
+  LeaderboardPeriod,
+} from './dto/leaderboard-query.dto';
 
-interface LeaderboardEntry {
+export interface LeaderboardEntry {
   userId: string;
   rank: number;
   value: number;
 }
 
-interface LeaderboardResult {
+export interface LeaderboardResult {
   leaderboard: LeaderboardEntry[];
   currentUser?: { rank: number; value: number };
 }
@@ -29,7 +35,11 @@ export class RewardsService {
     query: LeaderboardQueryDto,
     currentUserId?: string,
   ): Promise<LeaderboardResult> {
-    const { page = 1, limit = 100, period = LeaderboardPeriod.ALL_TIME } = query;
+    const {
+      page = 1,
+      limit = 100,
+      period = LeaderboardPeriod.ALL_TIME,
+    } = query;
     const since = this.getPeriodStartDate(period);
     const offset = (page - 1) * limit;
 
@@ -56,14 +66,21 @@ export class RewardsService {
       currentUser = await this.getUserPointsRank(currentUserId, since);
     }
 
-    return { leaderboard, ...(currentUser !== undefined ? { currentUser } : {}) };
+    return {
+      leaderboard,
+      ...(currentUser !== undefined ? { currentUser } : {}),
+    };
   }
 
   async getStreaksLeaderboard(
     query: LeaderboardQueryDto,
     currentUserId?: string,
   ): Promise<LeaderboardResult> {
-    const { page = 1, limit = 100, period = LeaderboardPeriod.ALL_TIME } = query;
+    const {
+      page = 1,
+      limit = 100,
+      period = LeaderboardPeriod.ALL_TIME,
+    } = query;
     const since = this.getPeriodStartDate(period);
     const offset = (page - 1) * limit;
 
@@ -90,14 +107,21 @@ export class RewardsService {
       currentUser = await this.getUserStreakRank(currentUserId, since);
     }
 
-    return { leaderboard, ...(currentUser !== undefined ? { currentUser } : {}) };
+    return {
+      leaderboard,
+      ...(currentUser !== undefined ? { currentUser } : {}),
+    };
   }
 
   async getSavingsLeaderboard(
     query: LeaderboardQueryDto,
     currentUserId?: string,
   ): Promise<LeaderboardResult> {
-    const { page = 1, limit = 100, period = LeaderboardPeriod.ALL_TIME } = query;
+    const {
+      page = 1,
+      limit = 100,
+      period = LeaderboardPeriod.ALL_TIME,
+    } = query;
     const since = this.getPeriodStartDate(period);
     const offset = (page - 1) * limit;
 
@@ -122,7 +146,8 @@ export class RewardsService {
       .offset(offset)
       .limit(limit);
 
-    const rows: { userId: string; totalSaved: string }[] = await qb.getRawMany();
+    const rows: { userId: string; totalSaved: string }[] =
+      await qb.getRawMany();
 
     const leaderboard: LeaderboardEntry[] = rows.map((row, idx) => ({
       userId: row.userId,
@@ -132,17 +157,30 @@ export class RewardsService {
 
     let currentUser: { rank: number; value: number } | undefined;
     if (currentUserId) {
-      currentUser = await this.getUserSavingsRank(currentUserId, since, hiddenUserIds);
+      currentUser = await this.getUserSavingsRank(
+        currentUserId,
+        since,
+        hiddenUserIds,
+      );
     }
 
-    return { leaderboard, ...(currentUser !== undefined ? { currentUser } : {}) };
+    return {
+      leaderboard,
+      ...(currentUser !== undefined ? { currentUser } : {}),
+    };
   }
 
-  async updateVisibility(userId: string, isVisible: boolean): Promise<{ isLeaderboardVisible: boolean }> {
+  async updateVisibility(
+    userId: string,
+    isVisible: boolean,
+  ): Promise<{ isLeaderboardVisible: boolean }> {
     let profile = await this.profileRepository.findOne({ where: { userId } });
 
     if (!profile) {
-      profile = this.profileRepository.create({ userId, isLeaderboardVisible: isVisible });
+      profile = this.profileRepository.create({
+        userId,
+        isLeaderboardVisible: isVisible,
+      });
     } else {
       profile.isLeaderboardVisible = isVisible;
     }
@@ -225,10 +263,14 @@ export class RewardsService {
     }
 
     if (hiddenUserIds.length > 0) {
-      countQb.andWhere('sub.userId NOT IN (:...hiddenUserIds)', { hiddenUserIds });
+      countQb.andWhere('sub.userId NOT IN (:...hiddenUserIds)', {
+        hiddenUserIds,
+      });
     }
 
-    countQb.groupBy('sub.userId').having('SUM(sub.amount) > :val', { val: userTotal });
+    countQb
+      .groupBy('sub.userId')
+      .having('SUM(sub.amount) > :val', { val: userTotal });
 
     const usersAbove = await countQb.getCount();
 
