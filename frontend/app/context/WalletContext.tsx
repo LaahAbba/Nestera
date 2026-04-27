@@ -30,9 +30,12 @@ interface WalletState {
   network: string | null;
   isConnected: boolean;
   isLoading: boolean;
+  isBalancesLoading: boolean;
   error: string | null;
+  balanceError: string | null;
   balances: Balance[];
   totalUsdValue: number;
+  lastBalanceSync: number | null;
 }
 
 interface WalletContextValue extends WalletState {
@@ -55,9 +58,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     network: null,
     isConnected: false,
     isLoading: false,
+    isBalancesLoading: false,
     error: null,
+    balanceError: null,
     balances: [],
     totalUsdValue: 0,
+    lastBalanceSync: null,
   });
 
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
@@ -71,6 +77,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const fetchBalances = useCallback(async () => {
     if (!state.address) return;
+
+    setState((s) => ({ ...s, isBalancesLoading: true, balanceError: null }));
 
     try {
       const horizonUrl = getHorizonUrl(state.network);
@@ -105,9 +113,18 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         ...s,
         balances,
         totalUsdValue: totalUsd,
+        isBalancesLoading: false,
+        balanceError: null,
+        lastBalanceSync: Date.now(),
       }));
     } catch (err) {
       console.error("Failed to fetch balances:", err);
+      setState((s) => ({
+        ...s,
+        isBalancesLoading: false,
+        balanceError:
+          err instanceof Error ? err.message : "Unable to refresh wallet balances.",
+      }));
     }
   }, [state.address, state.network]);
 
@@ -142,7 +159,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (state.address) {
       fetchBalances();
-      
+
       // Real-time updates every 30 seconds
       if (refreshInterval.current) clearInterval(refreshInterval.current);
       refreshInterval.current = setInterval(fetchBalances, 30000);
@@ -151,7 +168,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         clearInterval(refreshInterval.current);
         refreshInterval.current = null;
       }
-      setState((s) => ({ ...s, balances: [], totalUsdValue: 0 }));
+      setState((s) => ({
+        ...s,
+        balances: [],
+        totalUsdValue: 0,
+        isBalancesLoading: false,
+        balanceError: null,
+        lastBalanceSync: null,
+      }));
     }
 
     return () => {
@@ -177,7 +201,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     try {
       // Initialize watcher to poll every 3 seconds
       networkWatcher.current = new WatchWalletChanges(3000);
-      
+
       networkWatcher.current.watch((changes) => {
         if (changes.network && changes.network !== state.network) {
           setState((prevState) => ({
@@ -226,6 +250,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         isConnected: !!addrResult?.address,
         isLoading: false,
         error: null,
+        balanceError: null,
       }));
     } catch (err) {
       setState((s) => ({
@@ -244,8 +269,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       isConnected: false,
       isLoading: false,
       error: null,
+      balanceError: null,
       balances: [],
       totalUsdValue: 0,
+      isBalancesLoading: false,
+      lastBalanceSync: null,
     }));
   }, []);
 
@@ -261,4 +289,3 @@ export function useWallet(): WalletContextValue {
   if (!ctx) throw new Error("useWallet must be used within WalletProvider");
   return ctx;
 }
-

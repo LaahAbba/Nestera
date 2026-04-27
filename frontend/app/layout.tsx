@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { ThemeProvider } from "./context/ThemeContext";
 import { WalletProvider } from "./context/WalletContext";
+import { ToastProvider } from "./context/ToastContext";
 
 const BASE_URL = "https://nestera.app";
 
@@ -34,8 +35,15 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body className="bg-[var(--color-background)] text-[var(--color-text)] antialiased">
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
         <ThemeProvider>
-          <WalletProvider>{children}</WalletProvider>
+          <WalletProvider>
+            <ToastProvider>
+              <main id="main-content">{children}</main>
+            </ToastProvider>
+          </WalletProvider>
         </ThemeProvider>
       </body>
     </html>

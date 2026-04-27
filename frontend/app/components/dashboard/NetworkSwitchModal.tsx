@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { X, ExternalLink, AlertTriangle, Shield } from "lucide-react";
 import { getNetworkConfig } from "../../constants/networks";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useToast } from "../../context/ToastContext";
 
 /**
  * NetworkSwitchModal Component
@@ -30,41 +32,18 @@ const NetworkSwitchModal: React.FC<NetworkSwitchModalProps> = ({
   onClose,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const toast = useToast();
 
   // Get network configuration for styling
   const networkConfig = getNetworkConfig(currentNetwork);
 
-  // Focus management: save previous focus and restore on close
-  useEffect(() => {
-    if (isOpen) {
-      previousFocusRef.current = document.activeElement as HTMLElement;
-      // Focus the close button when modal opens
-      setTimeout(() => {
-        closeButtonRef.current?.focus();
-      }, 100);
-    } else {
-      // Restore focus when modal closes
-      previousFocusRef.current?.focus();
-    }
-  }, [isOpen]);
-
-  // Keyboard navigation: Escape to close
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  useFocusTrap({
+    isOpen,
+    containerRef: modalRef,
+    initialFocusRef: closeButtonRef,
+    onEscape: onClose,
+  });
 
   // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -78,10 +57,10 @@ const NetworkSwitchModal: React.FC<NetworkSwitchModalProps> = ({
     // Attempt to open Freighter extension
     // Note: This may not work in all browsers/contexts
     window.postMessage({ type: "FREIGHTER_OPEN" }, "*");
-    
-    // Provide fallback instructions
-    alert(
-      "Please click the Freighter extension icon in your browser toolbar to switch networks."
+
+    toast.info(
+      "Freighter instruction",
+      "If no window opens, click the Freighter browser extension icon manually.",
     );
   };
 

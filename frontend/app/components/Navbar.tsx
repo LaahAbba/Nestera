@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Loader2, Wallet } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import { useWallet } from "../context/WalletContext";
+import { useToast } from "../context/ToastContext";
 
 interface NavLink {
   label: string;
@@ -33,6 +34,8 @@ const Navbar: React.FC = () => {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { address, network, isConnected, isLoading, error, connect } = useWallet();
+  const toast = useToast();
+  const previousConnectedRef = useRef(isConnected);
 
   const isActiveLink = (href: string): boolean => {
     return pathname === href || pathname?.startsWith(href + "/") || false;
@@ -41,6 +44,19 @@ const Navbar: React.FC = () => {
   const shortAddress = address
     ? `${address.slice(0, 4)}...${address.slice(-4)}`
     : null;
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Wallet connection failed", error);
+    }
+  }, [error, toast]);
+
+  useEffect(() => {
+    if (!previousConnectedRef.current && isConnected && shortAddress) {
+      toast.success("Wallet connected", shortAddress);
+    }
+    previousConnectedRef.current = isConnected;
+  }, [isConnected, shortAddress, toast]);
 
   const WalletButton = ({ mobile = false }: { mobile?: boolean }) => {
     if (isConnected && address) {
@@ -76,7 +92,7 @@ const Navbar: React.FC = () => {
   return (
     <nav className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-nav)]/95 backdrop-blur-xl">
       <div className="w-full">
-        <div className="flex h-16 items-center justify-between px-[30px]">
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6 md:px-[30px]">
           <div className="shrink-0">
             <Link
               href="/"

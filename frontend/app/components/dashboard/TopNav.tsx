@@ -15,6 +15,8 @@ import {
 import ThemeToggle from "../ThemeToggle";
 import { useWallet } from "../../context/WalletContext";
 import NetworkIndicator from "./NetworkIndicator";
+import { useToast } from "../../context/ToastContext";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 const actionButtons = [
   { Icon: Search, label: "Search" },
@@ -31,6 +33,9 @@ const TopNav: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const confirmDialogRef = useRef<HTMLDivElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const toast = useToast();
 
   const xlmBalance = balances.find((balance) => balance.asset_code === "XLM")?.balance || "0";
   const formattedXlm = parseFloat(xlmBalance).toLocaleString(undefined, {
@@ -52,6 +57,7 @@ const TopNav: React.FC = () => {
 
     navigator.clipboard.writeText(address);
     setCopied(true);
+    toast.success("Address copied", "Wallet address copied to clipboard.");
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -72,8 +78,16 @@ const TopNav: React.FC = () => {
   const handleDisconnect = () => {
     disconnect();
     setShowConfirm(false);
+    toast.info("Wallet disconnected");
     router.push("/");
   };
+
+  useFocusTrap({
+    isOpen: showConfirm,
+    containerRef: confirmDialogRef,
+    initialFocusRef: cancelButtonRef,
+    onEscape: () => setShowConfirm(false),
+  });
 
   const normalizedNetwork = network?.toUpperCase();
   const isTestnet =
@@ -188,7 +202,10 @@ const TopNav: React.FC = () => {
           aria-modal="true"
           aria-labelledby="disconnect-title"
         >
-          <div className="mx-4 w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-strong)] p-6 shadow-2xl">
+          <div
+            ref={confirmDialogRef}
+            className="mx-4 w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-strong)] p-6 shadow-2xl"
+          >
             <div className="mb-3 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
                 <LogOut size={18} className="text-[var(--color-danger)]" />
@@ -204,6 +221,7 @@ const TopNav: React.FC = () => {
             </p>
             <div className="flex gap-3">
               <button
+                ref={cancelButtonRef}
                 onClick={() => setShowConfirm(false)}
                 className="flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] py-2.5 text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-text)]"
               >

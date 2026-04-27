@@ -4,7 +4,7 @@ import React from "react";
 import { useWallet } from "../../context/WalletContext";
 
 const NetWorthCard: React.FC = () => {
-  const { totalUsdValue, isConnected } = useWallet();
+  const { totalUsdValue, isConnected, isBalancesLoading } = useWallet();
 
   return (
     <div
@@ -68,22 +68,27 @@ const NetWorthCard: React.FC = () => {
           </div>
         </div>
 
-        <div className="text-5xl font-extrabold mt-3 tracking-tight text-white">
+        <div className="mt-3 text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
           {isConnected ? (
-            `$${totalUsdValue.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`
+            isBalancesLoading && totalUsdValue === 0 ? (
+              <span className="inline-block h-12 w-52 animate-pulse rounded-lg bg-white/10" />
+            ) : (
+              `$${totalUsdValue.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
+            )
           ) : (
             "$0.00"
           )}
         </div>
 
-        <div className="mt-2 text-[#95b7b7] text-sm">vs last month</div>
+        <div className="mt-2 text-[#95b7b7] text-sm">
+          {isBalancesLoading ? "Loading wallet valuation..." : "vs last month"}
+        </div>
       </div>
     </div>
   );
 };
 
 export default NetWorthCard;
-

@@ -2,10 +2,17 @@
 
 import React from "react";
 import { useWallet } from "../../context/WalletContext";
-import { Wallet, TrendingUp, ArrowUpRight } from "lucide-react";
+import { Loader2, Wallet, ArrowUpRight } from "lucide-react";
 
 const WalletBalanceCard: React.FC = () => {
-  const { balances, isConnected, isLoading } = useWallet();
+  const {
+    balances,
+    isConnected,
+    isLoading,
+    isBalancesLoading,
+    balanceError,
+    lastBalanceSync,
+  } = useWallet();
 
   if (!isConnected) {
     return (
@@ -16,13 +23,17 @@ const WalletBalanceCard: React.FC = () => {
     );
   }
 
-  if (isLoading && balances.length === 0) {
+  if ((isLoading || isBalancesLoading) && balances.length === 0) {
     return (
-      <div className="bg-[#0e2330] border border-white/5 rounded-2xl p-6 animate-pulse min-h-[300px]">
+      <div className="bg-[#0e2330] border border-white/5 rounded-2xl p-6 min-h-[300px]">
+        <div className="mb-4 inline-flex items-center gap-2 text-xs text-[#6a9fae]">
+          <Loader2 size={14} className="animate-spin text-[#08c1c1]" />
+          Loading wallet balances...
+        </div>
         <div className="h-6 w-32 bg-white/5 rounded mb-6"></div>
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-white/5 rounded-xl"></div>
+            <div key={i} className="h-16 bg-white/5 rounded-xl animate-pulse"></div>
           ))}
         </div>
       </div>
@@ -30,7 +41,10 @@ const WalletBalanceCard: React.FC = () => {
   }
 
   return (
-    <div className="bg-[#0e2330] border border-white/5 rounded-2xl p-6">
+    <div className="bg-[#0e2330] border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+      {isBalancesLoading ? (
+        <div className="absolute top-0 left-0 h-1 w-full bg-[#08c1c1]/40 animate-pulse" />
+      ) : null}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#08c1c1]/10 flex items-center justify-center text-[#08c1c1]">
@@ -42,6 +56,19 @@ const WalletBalanceCard: React.FC = () => {
           Manage Assets <ArrowUpRight size={14} />
         </button>
       </div>
+
+      {isBalancesLoading ? (
+        <div className="mb-3 inline-flex items-center gap-2 text-xs text-[#6a9fae]">
+          <Loader2 size={13} className="animate-spin text-[#08c1c1]" />
+          Refreshing balances...
+        </div>
+      ) : null}
+
+      {balanceError ? (
+        <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Unable to refresh balances. Showing last available data.
+        </p>
+      ) : null}
 
       <div className="space-y-3">
         {balances.length === 0 ? (
@@ -82,6 +109,11 @@ const WalletBalanceCard: React.FC = () => {
       </div>
 
       <div className="mt-6 pt-5 border-t border-white/5">
+        {lastBalanceSync ? (
+          <p className="mb-2 text-[11px] text-[#6a9fae]">
+            Last updated {new Date(lastBalanceSync).toLocaleTimeString()}
+          </p>
+        ) : null}
         <div className="flex items-center justify-between text-sm">
           <span className="text-[#6a9fae]">Total Wallet Value</span>
           <span className="text-white font-bold">
