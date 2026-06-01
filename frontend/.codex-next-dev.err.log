@@ -138,3 +138,34 @@ Error: MISSING_MESSAGE: Could not resolve `Support.Support.sendMessage` in messa
   code: 'MISSING_MESSAGE',
   originalMessage: 'Could not resolve `Support.Support.sendMessage` in messages for locale `es`.'
 }
+SyntaxError: C:\Users\Tumi\Desktop\nike\Nestera\frontend\package.json (directory description file): SyntaxError: Expected double-quoted property name in JSON at position 165
+    at JSON.parse (<anonymous>)
+    [2m[at Object.<anonymous> (C:\Users\Tumi\Desktop\nike\Nestera\frontend\node_modules\.pnpm\enhanced-resolve@5.19.0\node_modules\enhanced-resolve\lib\CachedInputFileSystem.js:625:26)][0m
+    [2m[at CacheBackend.provideSync (C:\Users\Tumi\Desktop\nike\Nestera\frontend\node_modules\.pnpm\enhanced-resolve@5.19.0\node_modules\enhanced-resolve\lib\CachedInputFileSystem.js:344:67)][0m
+    [2m[at SyncAsyncFileSystemDecorator.readJson (C:\Users\Tumi\Desktop\nike\Nestera\frontend\node_modules\.pnpm\enhanced-resolve@5.19.0\node_modules\enhanced-resolve\lib\SyncAsyncFileSystemDecorator.js:197:29)][0m
+    [2m[at C:\Users\Tumi\Desktop\nike\Nestera\frontend\node_modules\.pnpm\enhanced-resolve@5.19.0\node_modules\enhanced-resolve\lib\DescriptionFileUtils.js:104:26][0m
+    [2m[at next (C:\Users\Tumi\Desktop\nike\Nestera\frontend\node_modules\.pnpm\enhanced-resolve@5.19.0\node_modules\enhanced-resolve\lib\forEachBail.js:35:3)][0m
+    [2m[at forEachBail (C:\Users\Tumi\Desktop\nike\Nestera\frontend\node_modules\.pnpm\enhanced-resolve@5.19.0\node_modules\enhanced-resolve\lib\forEachBail.js:49:9)][0m
+    [2m[at findDescriptionFile (C:\Users\Tumi\Desktop\nike\Nestera\frontend\node_modules\.pnpm\enhanced-resolve@5.19.0\node_modules\enhanced-resolve\lib\DescriptionFileUtils.js:70:3)][0m
+    [2m[at C:\Users\Tumi\Desktop\nike\Nestera\frontend\node_modules\.pnpm\enhanced-resolve@5.19.0\node_modules\enhanced-resolve\lib\DescriptionFileUtils.js:167:12][0m
+    [2m[at C:\Users\Tumi\Desktop\nike\Nestera\frontend\node_modules\.pnpm\enhanced-resolve@5.19.0\node_modules\enhanced-resolve\lib\forEachBail.js:39:13][0m
+⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+SyntaxError: Expected double-quoted property name in JSON at position 43240
+    at JSON.parse (<anonymous>)
+ ERROR  Expected double-quoted property name in JSON at position 165 while parsing '{  "name": "frontend",  "version": "' in C:\Users\Tumi\Desktop\nike\Nestera\frontend\package.json 
+
+[0m [90m  7 |[39m     [32m"build"[39m[33m:[39m [32m"next build"[39m[33m,[39m
+ [90m  8 |[39m     [32m"start"[39m[33m:[39m [32m"next start"[39m[33m,[39m
+[31m[1m>[22m[39m[90m  9 |[39m [33m<<[39m[33m<<[39m[33m<<[39m[33m<[39m [33mHEAD[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 10 |[39m     [32m"storybook"[39m[33m:[39m [32m"storybook dev -p 6006"[39m[33m,[39m
+ [90m 11 |[39m     [32m"build-storybook"[39m[33m:[39m [32m"storybook build"[39m
+ [90m 12 |[39m [33m===[39m[33m===[39m[33m=[39m[0m
+
+For help, run: pnpm help add
+Failed to install required TypeScript dependencies, please install them manually to continue:
+pnpm add --save-exact --save-dev typescript @types/react @types/node
+
+Unhandled Rejection: {
+  command: 'pnpm add --save-exact --save-dev typescript @types/react @types/node'
+}
