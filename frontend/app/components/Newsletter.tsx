@@ -1,17 +1,41 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
+
+// Create validation schema
+const newsletterSchema = z.object({
+  email: z.string().email("Invalid email address").trim(),
+});
+
+type NewsletterFormValues = z.infer<typeof newsletterSchema>;
 
 const Newsletter: React.FC = () => {
-  const [email, setEmail] = useState("");
+  const t = useTranslations();
+  
+  // Update the schema with translated messages
+  const translatedSchema = z.object({
+    email: z.string().email(t("forms.invalidEmail")).trim(),
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email) {
-      console.log("Newsletter signup:", email);
-      // Here you would typically send the email to your backend
-      setEmail("");
-    }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting, isSuccess },
+  } = useForm<NewsletterFormValues>({
+    resolver: zodResolver(translatedSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const onSubmit = (data: NewsletterFormValues) => {
+    console.log("Newsletter signup:", data.email);
+    // Here you would typically send the email to your backend
+    // Reset form after successful submission
   };
 
   return (
@@ -19,31 +43,47 @@ const Newsletter: React.FC = () => {
       <div className="flex justify-between items-center w-full max-w-[1200px] flex-wrap gap-8 max-md:flex-col max-md:items-stretch max-md:text-center">
         <div className="flex-1 min-w-[280px]">
           <h2 className="text-white text-2xl font-semibold mb-2 leading-tight">
-            Want to receive any updates or news?
+            {t("Newsletter.title")}
           </h2>
-          <p className="text-gray-400 text-sm m-0">Sign up for our Newsletter</p>
+          <p className="text-gray-400 text-sm m-0">
+            {t("Newsletter.description")}
+          </p>
         </div>
 
         <form
           className="flex gap-3 flex-1 justify-end min-w-[320px] max-md:flex-col max-md:justify-center"
-          onSubmit={handleSubmit}
+          onSubmit={handleSubmit(onSubmit)}
         >
           <div className="flex-1 max-w-[400px] max-md:max-w-full">
             <input
               type="email"
-              className="w-full px-4 py-3 bg-[#020c0c] border border-[#1f3536] rounded-md text-white text-sm placeholder:text-gray-500 outline-none transition-colors duration-200 focus:border-[#00d1c1] box-border"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              {...register("email")}
+              className={`w-full px-4 py-3 bg-[#020c0c] border border-[#1f3536] rounded-md text-white text-sm placeholder:text-gray-500 outline-none transition-colors duration-200 focus:border-[#00d1c1] box-border ${
+                errors.email ? "border-red-500" : ""
+              }`}
+              placeholder={t("Newsletter.placeholder")}
               required
+              aria-invalid={!!errors.email ? "true" : "false"}
+              aria-describedby={errors.email ? "email-error" : undefined}
             />
+            {errors.email && (
+              <p id="email-error" className="text-xs text-red-500 mt-1">
+                {errors.email.message}
+              </p>
+            )}
           </div>
           <button
             type="submit"
-            className="px-6 py-3 bg-[#00d1c1] text-[#020c0c] border-none rounded-md text-sm font-semibold cursor-pointer transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+            className="px-6 py-3 bg-[#00d1c1] text-[#020c0c] border-none rounded-md text-sm font-semibold cursor-pointer transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+            disabled={isSubmitting}
           >
-            Submit
+            {isSubmitting ? t("Newsletter.submit") + "..." : t("Newsletter.submit")}
           </button>
+          {isSuccess && (
+            <p className="mt-2 text-xs text-green-500">
+              {t("Newsletter.success")}
+            </p>
+          )}
         </form>
       </div>
     </section>

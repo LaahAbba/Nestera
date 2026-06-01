@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Wallet } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface NavLink {
   label: string;
@@ -12,18 +13,23 @@ interface NavLink {
 
 const Navbar: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const t = useTranslations("Navbar");
 
   const navLinks: NavLink[] = [
-    { label: "Features", href: "/features" },
-    { label: "Savings", href: "/savings" },
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Community", href: "/community" },
-    { label: "Docs", href: "/docs" },
+    { label: t("features"), href: "/features" },
+    { label: t("savings"), href: "/savings" },
+    { label: t("dashboard"), href: "/dashboard" },
+    { label: t("community"), href: "/community" },
+    { label: t("docs"), href: "/docs" },
   ];
 
   const isActiveLink = (href: string): boolean => {
-    return pathname === href || pathname?.startsWith(href + "/");
+    // Remove locale prefix for comparison
+    const cleanPathname = pathname.replace(/^\/[a-z]{2}/, "");
+    const cleanHref = href.replace(/^\/[a-z]{2}/, "");
+    return cleanPathname === cleanHref || cleanPathname?.startsWith(cleanHref + "/");
   };
 
   const navLinkBase =
@@ -35,6 +41,13 @@ const Navbar: React.FC = () => {
     "block py-3 px-3 rounded-md text-base font-medium no-underline text-slate-300 transition-all duration-200 border-l-4 border-transparent hover:text-white hover:bg-slate-800";
   const mobileLinkActive =
     "text-cyan-500 bg-slate-800 border-l-cyan-500";
+
+  const handleLanguageChange = (locale: string) => {
+    // Get current pathname without locale
+    const currentPath = pathname.replace(/^\/[a-z]{2}/, "") || "/";
+    // Navigate to the same path with new locale
+    router.push(`/(${locale})${currentPath}`);
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-[#061a1a]">
@@ -77,6 +90,56 @@ const Navbar: React.FC = () => {
             >
               Connect Wallet
             </button>
+
+            {/* Language Switcher */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} // Reusing mobile menu state for simplicity
+                className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium text-white hover:text-cyan-300 focus:outline-none"
+                aria-haspopup="true"
+                aria-expanded={false}
+              >
+                {t("language")}:{" "}
+                <span className="ml-1 font-semibold">
+                  {t(
+                    typeof window !== "undefined" && localStorage.getItem("NEXT_LOCALE")
+                      ? (localStorage.getItem("NEXT_LOCALE") as "en" | "es")
+                      : "en"
+                  ) === "en"
+                    ? t("english")
+                    : t("spanish")
+                  )}
+                </span>
+                <svg className="ml-2 w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 1 0 111.414 0L10 10.586l3.293-3.293a1 1 1 0 111.414 1.414l-4 4a1 1 1 0 01-1.414 0l-4-4a1 1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+              
+              {/* Language dropdown menu */}
+              <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="py-1">
+                  <button
+                    type="button"
+                    className="block px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100"
+                    onClick={() => {
+                      handleLanguageChange("en");
+                    }}
+                  >
+                    {t("english")}
+                  </button>
+                  <button
+                    type="button"
+                    className="block px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100"
+                    onClick={() => {
+                      handleLanguageChange("es");
+                    }}
+                  >
+                    {t("spanish")}
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <button
               type="button"

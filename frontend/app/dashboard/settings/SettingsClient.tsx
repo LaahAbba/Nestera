@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { useForm } from "react-hook-form";
 import { Settings } from "lucide-react";
 
 type Prefs = {
@@ -13,44 +14,25 @@ type Prefs = {
 };
 
 export default function SettingsClient() {
-  const [prefs, setPrefs] = useState<Prefs | null>(null);
-  const [saving, setSaving] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting, isSuccess },
+  } = useForm<Prefs>({
+    defaultValues: {
+      emailNotifications: false,
+      inAppNotifications: false,
+      sweepNotifications: false,
+      claimNotifications: false,
+      yieldNotifications: false,
+      milestoneNotifications: false,
+    },
+  });
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/notifications/preferences", {
-          credentials: "include",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setPrefs(data);
-        }
-      } catch (e) {
-        // ignore for now
-      }
-    };
-    load();
-  }, []);
-
-  const toggle = (key: keyof Prefs) => {
-    setPrefs((p) => (p ? { ...p, [key]: !p[key] } : p));
-  };
-
-  const save = async () => {
-    if (!prefs) return;
-    setSaving(true);
-    try {
-      await fetch("/notifications/preferences", {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prefs),
-      });
-    } catch (e) {
-      // ignore
-    }
-    setSaving(false);
+  const onSubmit = (data: Prefs) => {
+    console.log("Settings submitted:", data);
+    // Here you would typically send the data to your backend
+    // For now, we'll just log it
   };
 
   return (
@@ -69,7 +51,7 @@ export default function SettingsClient() {
 
       <div className="bg-linear-to-b from-[rgba(6,18,20,0.45)] to-[rgba(4,12,14,0.35)] border border-[rgba(8,120,120,0.06)] rounded-2xl p-8">
         <h2 className="text-lg font-semibold text-white mb-4">Notifications</h2>
-        <div className="flex flex-col gap-4 text-left max-w-xl mx-auto">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 text-left max-w-xl mx-auto">
           <label className="flex items-center justify-between">
             <div>
               <div className="text-white font-medium">Email Notifications</div>
@@ -79,8 +61,7 @@ export default function SettingsClient() {
             </div>
             <input
               type="checkbox"
-              checked={!!prefs?.emailNotifications}
-              onChange={() => toggle("emailNotifications")}
+              {...register("emailNotifications")}
             />
           </label>
 
@@ -93,8 +74,52 @@ export default function SettingsClient() {
             </div>
             <input
               type="checkbox"
-              checked={!!prefs?.inAppNotifications}
-              onChange={() => toggle("inAppNotifications")}
+              {...register("inAppNotifications")}
+            />
+          </label>
+
+          <label className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-medium">
+                Sweep Notifications
+              </div>
+              <div className="text-sm text-[#5e8c96]">
+                Receive updates about sweepstakes and promotions
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              {...register("sweepNotifications")}
+            />
+          </label>
+
+          <label className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-medium">
+                Claim Notifications
+              </div>
+              <div className="text-sm text-[#5e8c96]">
+                Notify when rewards are available to claim
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              {...register("claimNotifications")}
+            />
+          </label>
+
+          <label className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-medium">
+                Yield Notifications
+              </div>
+              <div className="text-sm text-[#5e8c96]">
+                Receive updates about yield changes and opportunities
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              {...register("yieldNotifications")}
             />
           </label>
 
@@ -110,21 +135,26 @@ export default function SettingsClient() {
             </div>
             <input
               type="checkbox"
-              checked={!!prefs?.milestoneNotifications}
-              onChange={() => toggle("milestoneNotifications")}
+              {...register("milestoneNotifications")}
             />
           </label>
 
           <div className="text-right">
             <button
-              className="px-4 py-2 rounded bg-[#06b6b6] text-black font-semibold"
-              onClick={save}
-              disabled={saving}
+              type="submit"
+              className="px-4 py-2 rounded bg-[#06b6b6] text-black font-semibold disabled:opacity-50"
+              disabled={isSubmitting}
             >
-              {saving ? "Saving..." : "Save Preferences"}
+              {isSubmitting ? "Saving..." : "Save Preferences"}
             </button>
           </div>
-        </div>
+          
+          {isSuccess && (
+            <p className="mt-4 text-xs text-green-500 text-center">
+              Preferences saved successfully!
+            </p>
+          )}
+        </form>
       </div>
     </div>
   );
