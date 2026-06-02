@@ -92,6 +92,27 @@ export default () => ({
       10,
     ),
   },
+  cors: {
+    enabled: process.env.CORS_ENABLED !== 'false',
+    origins: (process.env.CORS_ORIGINS || 'http://localhost:3000')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean),
+    methods: (
+      process.env.CORS_METHODS || 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS'
+    )
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean),
+    allowedHeaders: (
+      process.env.CORS_ALLOWED_HEADERS || 'Content-Type,Authorization,Accept'
+    )
+      .split(',')
+      .map((h) => h.trim())
+      .filter(Boolean),
+    credentials: process.env.CORS_CREDENTIALS !== 'false',
+    maxAge: parseInt(process.env.CORS_MAX_AGE || '86400', 10),
+  },
   balanceSync: {
     cacheTtlSeconds: parseInt(
       process.env.BALANCE_CACHE_TTL_SECONDS || '300',

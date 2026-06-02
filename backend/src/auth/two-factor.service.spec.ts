@@ -9,10 +9,6 @@ import { JwtService } from '@nestjs/jwt';
 import { TwoFactorService } from './two-factor.service';
 import { User } from '../modules/user/entities/user.entity';
 
-jest.mock('qrcode', () => ({
-  toDataURL: jest.fn().mockResolvedValue('data:image/png;base64,mockqrcode'),
-}));
-
 const mockUser = (overrides: Partial<User> = {}): User =>
   ({
     id: 'user-1',
@@ -50,14 +46,13 @@ describe('TwoFactorService', () => {
   });
 
   describe('enable()', () => {
-    it('returns secret, otpauthUrl, qrCodeDataUrl, and backupCodes', async () => {
+    it('returns secret, otpauthUrl, and backupCodes', async () => {
       mockUserRepository.findOne.mockResolvedValue(mockUser());
 
       const result = await service.enable('user-1');
 
       expect(result.secret).toBeDefined();
       expect(result.otpauthUrl).toMatch(/^otpauth:\/\/totp\/Nestera:/);
-      expect(result.qrCodeDataUrl).toBe('data:image/png;base64,mockqrcode');
       expect(result.backupCodes).toHaveLength(8);
       expect(mockUserRepository.update).toHaveBeenCalledWith('user-1', {
         twoFactorSecret: result.secret,
