@@ -50,6 +50,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
 import { JobsModule } from './modules/jobs/jobs.module';
 import { GracefulShutdownService } from './common/services/graceful-shutdown.service';
 import { PerformanceModule } from './modules/performance/performance.module';
+import { SandboxModule } from './modules/sandbox/sandbox.module';
 
 const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').required(),
@@ -220,6 +221,7 @@ const envValidationSchema = Joi.object({
     PostmanModule,
     PerformanceModule,
     JobsModule,
+    SandboxModule,
     CommonModule,
     ThrottlerModule.forRoot([
       {
