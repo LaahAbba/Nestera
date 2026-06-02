@@ -1,6 +1,8 @@
 import { IsUUID, IsNumber, Min, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsStellarPublicKey } from '../../../common/validators/is-stellar-key.validator';
+import { Trim } from '../../../common/decorators/trim.decorator';
+import { IsPositiveAmount } from '../../../common/validators/is-positive-amount.validator';
 
 export class SubscribeDto {
   @ApiProperty({ description: 'Savings product ID to subscribe to' })
@@ -9,6 +11,7 @@ export class SubscribeDto {
 
   @ApiProperty({ example: 5000, description: 'Amount to subscribe' })
   @IsNumber()
+  @IsPositiveAmount()
   @Min(0.01)
   amount: number;
 
@@ -18,6 +21,7 @@ export class SubscribeDto {
       'Optional Stellar wallet address associated with this subscription',
   })
   @IsOptional()
+  @Trim()
   @IsStellarPublicKey()
   walletAddress?: string;
 }

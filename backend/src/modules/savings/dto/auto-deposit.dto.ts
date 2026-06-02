@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNumber, IsUUID, Min } from 'class-validator';
 import { AutoDepositFrequency, AutoDepositStatus } from '../entities/auto-deposit-schedule.entity';
+import { IsPositiveAmount } from '../../../common/validators/is-positive-amount.validator';
 
 export class CreateAutoDepositDto {
   @ApiProperty({ example: 'uuid-product-id', description: 'Savings product UUID' })
@@ -9,6 +10,7 @@ export class CreateAutoDepositDto {
 
   @ApiProperty({ example: 100, description: 'Amount to deposit per cycle (in XLM)', minimum: 0.01 })
   @IsNumber()
+  @IsPositiveAmount()
   @Min(0.01)
   amount: number;
 

@@ -13,6 +13,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ApiExample } from '../../../common/decorators/api-example.decorator';
 import { SavingsGoalMetadata } from '../entities/savings-goal.entity';
 import { IsFutureDate } from '../../../common/validators/is-future-date.validator';
+import { Trim } from '../../../common/decorators/trim.decorator';
+import { IsPositiveAmount } from '../../../common/validators/is-positive-amount.validator';
 
 export class CreateGoalDto {
   @ApiProperty({
@@ -23,6 +25,7 @@ export class CreateGoalDto {
   })
   @IsString()
   @IsNotEmpty({ message: 'Goal name is required' })
+  @Trim()
   @MaxLength(255, { message: 'Goal name must not exceed 255 characters' })
   goalName: string;
 
@@ -32,6 +35,7 @@ export class CreateGoalDto {
     minimum: 0.01,
   })
   @IsNumber({}, { message: 'Target amount must be a valid number' })
+  @IsPositiveAmount()
   @Min(0.01, { message: 'Target amount must be at least 0.01 XLM' })
   targetAmount: number;
 
