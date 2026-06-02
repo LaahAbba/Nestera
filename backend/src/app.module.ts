@@ -331,6 +331,7 @@ const envValidationSchema = Joi.object({
     ApmModule,
     FeatureFlagsModule,
     JobsModule,
+    BadgesModule,
     CommonModule,
     ThrottlerModule.forRoot([
       {
@@ -382,4 +383,5 @@ export class AppModule implements NestModule {
       .apply(CorrelationIdMiddleware, CompressionMetricsMiddleware)
       .forRoutes('*');
   }
+}
 }

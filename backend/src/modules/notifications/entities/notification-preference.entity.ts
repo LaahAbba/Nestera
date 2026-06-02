@@ -48,6 +48,9 @@ export class NotificationPreference {
   @Column({ type: 'boolean', default: true })
   governanceNotifications: boolean;
 
+  @Column({ type: 'boolean', default: true })
+  badgeNotifications: boolean;
+
   @Column({ type: 'boolean', default: false })
   marketingNotifications: boolean;
 

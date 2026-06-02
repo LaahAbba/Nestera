@@ -263,4 +263,30 @@ export class MailService {
       );
     }
   }
+
+  async sendBadgeEarnedEmail(
+    userEmail: string,
+    name: string,
+    badgeName: string,
+    points: number,
+  ): Promise<void> {
+    try {
+      await this.mailerService.sendMail({
+        to: userEmail,
+        subject: `You earned the "${badgeName}" badge!`,
+        template: './badge-earned',
+        context: {
+          name: name || 'User',
+          badgeName,
+          points,
+        },
+      });
+      this.logger.log(`Badge earned email sent to ${userEmail}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send badge earned email to ${userEmail}`,
+        error,
+      );
+    }
+  }
 }

@@ -50,6 +50,16 @@ export interface MilestoneAchievedEvent {
   achievedAt: Date;
 }
 
+export interface BadgeEarnedEvent {
+  userId: string;
+  badgeId: string;
+  badgeCode: string;
+  badgeName: string;
+  points: number;
+  earnedAt: Date;
+  metadata?: Record<string, any>;
+}
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -158,6 +168,64 @@ export class NotificationsService {
     } catch (error) {
       this.logger.error(
         `Error processing milestone.achieved event for user ${event.userId}`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Listen to badge.earned event and create in-app notification
+   */
+  @OnEvent('badge.earned')
+  async handleBadgeEarned(event: BadgeEarnedEvent): Promise<void> {
+    this.logger.log(
+      `Processing badge.earned event for user ${event.userId}, badge ${event.badgeCode}`,
+    );
+
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: event.userId },
+      });
+
+      if (!user) {
+        this.logger.warn(
+          `User ${event.userId} not found for badge notification`,
+        );
+        return;
+      }
+
+      const preferences = await this.getOrCreatePreferences(event.userId);
+
+      if (preferences.inAppNotifications) {
+        await this.createNotification({
+          userId: event.userId,
+          type: NotificationType.BADGE_EARNED,
+          title: `Badge Earned: ${event.badgeName}`,
+          message: `Congratulations! You earned the "${event.badgeName}" badge${event.points > 0 ? ` and ${event.points} points!` : '!'}`,
+          metadata: {
+            badgeId: event.badgeId,
+            badgeCode: event.badgeCode,
+            badgeName: event.badgeName,
+            points: event.points,
+            earnedAt: event.earnedAt,
+            ...event.metadata,
+          },
+        });
+      }
+
+      if (preferences.emailNotifications && preferences.badgeNotifications) {
+        await this.mailService.sendBadgeEarnedEmail(
+          user.email,
+          user.name || 'User',
+          event.badgeName,
+          event.points,
+        );
+      }
+
+      this.logger.log(`Badge notification processed for user ${event.userId}`);
+    } catch (error) {
+      this.logger.error(
+        `Error processing badge.earned event for user ${event.userId}`,
         error,
       );
     }
