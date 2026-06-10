@@ -4,6 +4,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useOnboarding } from "../../context/OnboardingContext";
 
 type Prefs = {
   emailNotifications?: boolean;
@@ -16,6 +17,7 @@ type Prefs = {
 
 export default function SettingsClient() {
   const t = useTranslations("Settings");
+  const { resetOnboarding } = useOnboarding();
   const [optimisticPrefs, setOptimisticPrefs] = React.useState<Prefs>({
     emailNotifications: false,
     inAppNotifications: false,
@@ -211,6 +213,25 @@ export default function SettingsClient() {
             </p>
           )}
         </form>
+
+        <div className="mt-8 pt-6 border-t border-[rgba(8,120,120,0.06)]">
+          <h2 className="text-lg font-semibold text-white mb-4">Tutorial</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-medium">Show onboarding tutorial again</div>
+              <div className="text-sm text-[#5e8c96]">
+                Replay the interactive guide to Nestera
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={resetOnboarding}
+              className="px-4 py-2 rounded border border-[#06b6b6] text-[#06b6b6] hover:bg-[#06b6b6] hover:text-black transition-colors"
+            >
+              Restart Tutorial
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
