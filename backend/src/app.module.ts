@@ -48,6 +48,7 @@ import { CircuitBreakerModule } from './common/circuit-breaker/circuit-breaker.m
 import { PostmanModule } from './common/postman/postman.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { PerformanceModule } from './modules/performance/performance.module';
+import { JobQueueModule } from './modules/job-queue/job-queue.module';
 import { GracefulShutdownService } from './common/services/graceful-shutdown.service';
 
 const envValidationSchema = Joi.object({
@@ -211,6 +212,7 @@ const envValidationSchema = Joi.object({
     CircuitBreakerModule,
     PostmanModule,
     PerformanceModule,
+    JobQueueModule,
     CommonModule,
     ThrottlerModule.forRoot([
       {
