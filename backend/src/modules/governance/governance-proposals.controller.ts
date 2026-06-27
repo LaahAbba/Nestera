@@ -30,6 +30,7 @@ import { ProposalTemplateSummaryDto } from './dto/proposal-template-summary.dto'
 import { ProposalVotesResponseDto } from './dto/proposal-votes-response.dto';
 import { ProposalStatus } from './entities/governance-proposal.entity';
 import { GovernanceService } from './governance.service';
+import { Idempotent } from '../../common/decorators/idempotent.decorator';
 
 @ApiTags('governance')
 @Controller('governance/proposals')
@@ -148,6 +149,7 @@ export class GovernanceProposalsController {
 
   @Post(':id/vote')
   @UseGuards(JwtAuthGuard)
+  @Idempotent({ ttlSeconds: 3600 })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Cast a vote on an active proposal',
@@ -248,6 +250,7 @@ export class GovernanceProposalsController {
 
   @Post(':id/execute')
   @UseGuards(JwtAuthGuard)
+  @Idempotent({ ttlSeconds: 86400 })
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Execute a queued proposal after timelock' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
