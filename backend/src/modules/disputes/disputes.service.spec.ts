@@ -6,7 +6,6 @@ import {
   DisputeMessage,
   DisputeTimeline,
   DisputeStatus,
-  DisputeTimeline,
 } from './entities/dispute.entity';
 import { MedicalClaim } from '../claims/entities/medical-claim.entity';
 import { NotificationsService } from '../notifications/notifications.service';

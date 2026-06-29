@@ -266,6 +266,26 @@ export class GracefulShutdownService implements BeforeApplicationShutdown {
     }
   }
 
+  private async stopBackgroundWorkers(): Promise<void> {
+    if (this.backgroundWorkers.length === 0) return;
+    this.logger.log(`Stopping ${this.backgroundWorkers.length} background worker(s)...`);
+    const results = await Promise.allSettled(
+      this.backgroundWorkers.map(async (worker) => {
+        try {
+          await worker.shutdown();
+          this.logger.log(`Background worker stopped: ${worker.name}`);
+        } catch (error) {
+          this.logger.error(`Error stopping background worker ${worker.name}:`, error);
+          throw error;
+        }
+      }),
+    );
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length > 0) {
+      this.logger.warn(`${failed.length} background worker(s) failed to stop cleanly`);
+    }
+  }
+
   private async closeDatabaseConnections(): Promise<void> {
     if (!this.dataSource?.isInitialized) {
       return;
