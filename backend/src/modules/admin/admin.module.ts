@@ -27,7 +27,9 @@ import { AdminDisputesService } from './admin-disputes.service';
 import { AdminAuditLogsService } from './admin-audit-logs.service';
 import { AdminNotificationsService } from './admin-notifications.service';
 import { AdminTransactionsService } from './admin-transactions.service';
+import { AdminConfirmationService } from './admin-confirmation.service';
 import { AdminTransactionNote } from './entities/admin-transaction-note.entity';
+import { AdminConfirmation } from './entities/admin-confirmation.entity';
 import { User } from '../user/entities/user.entity';
 import { UserSubscription } from '../savings/entities/user-subscription.entity';
 import { SavingsProduct } from '../savings/entities/savings-product.entity';
@@ -48,6 +50,7 @@ import { Dispute, DisputeTimeline } from '../disputes/entities/dispute.entity';
       AuditLog,
       Transaction,
       AdminTransactionNote,
+      AdminConfirmation,
       Dispute,
       DisputeTimeline,
       AuditLog,
@@ -76,7 +79,8 @@ import { Dispute, DisputeTimeline } from '../disputes/entities/dispute.entity';
     AdminNotificationsService,
     AdminTransactionsService,
     AdminWithdrawalService,
+    AdminConfirmationService,
   ],
-  exports: [AdminDisputesService, AdminAuditLogsService],
+  exports: [AdminDisputesService, AdminAuditLogsService, AdminConfirmationService],
 })
 export class AdminModule {}
