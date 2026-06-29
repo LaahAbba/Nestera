@@ -1,62 +1,102 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { join, extname } from 'path';
+import { extname } from 'path';
 import { randomUUID } from 'crypto';
+import { StorageAccessService } from './storage-access.service';
 
 @Injectable()
 export class StorageService {
-  private readonly uploadDir = './uploads';
+  constructor(private readonly storageAccess: StorageAccessService) {}
 
-  constructor() {
-    this.ensureUploadDirExists();
-  }
-
-  private ensureUploadDirExists(subdir?: string) {
-    const dir = subdir ? join(this.uploadDir, subdir) : this.uploadDir;
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-  }
-
-  resolvePath(storagePath: string): string {
-    const relative = storagePath.startsWith('/uploads/')
+  toStorageKey(storagePath: string): string {
+    return storagePath.startsWith('/uploads/')
       ? storagePath.slice('/uploads/'.length)
       : storagePath;
-    return join(this.uploadDir, relative);
   }
 
-  async saveFile(file: any, subdir?: string): Promise<string> {
+  readFileBuffer(storagePath: string): Buffer {
+    return this.storageAccess.readLocalFile(this.toStorageKey(storagePath));
+  }
+
+  async saveFile(
+    file: { originalname: string; buffer: Buffer; mimetype: string },
+    ownerIdOrPrefix?: string,
+  ): Promise<string> {
     try {
+      const keyPrefix =
+        ownerIdOrPrefix?.includes('/') === true ? ownerIdOrPrefix : 'files';
+      const ownerId =
+        ownerIdOrPrefix && !ownerIdOrPrefix.includes('/')
+          ? ownerIdOrPrefix
+          : undefined;
       const fileExtension = extname(file.originalname);
-      const fileName = `${randomUUID()}${fileExtension}`;
-      const relativePath = subdir ? join(subdir, fileName) : fileName;
+      const key = `${keyPrefix}/${randomUUID()}${fileExtension}`;
 
-      this.ensureUploadDirExists(subdir);
-      const filePath = join(this.uploadDir, relativePath);
-      writeFileSync(filePath, file.buffer);
+      const stored = await this.storageAccess.getProvider().save(file.buffer, {
+        key,
+        contentType: file.mimetype,
+        ownerId,
+        visibility: 'private',
+      });
 
-      return `/uploads/${relativePath.replace(/\\/g, '/')}`;
-    } catch (error) {
+      if (ownerId) {
+        this.storageAccess.registerAccessRule({
+          key,
+          ownerId,
+          visibility: 'private',
+        });
+      }
+
+      return stored.path;
+    } catch {
       throw new InternalServerErrorException('Failed to save file');
     }
   }
 
-  async saveBuffer(buffer: Buffer, pathTemplate: string): Promise<string> {
+  async saveBuffer(
+    buffer: Buffer,
+    pathTemplate: string,
+    contentType = 'image/webp',
+  ): Promise<string> {
     try {
       const ext = extname(pathTemplate);
-      const subdir = pathTemplate.includes('/')
+      const keyPrefix = pathTemplate.includes('/')
         ? pathTemplate.split('/').slice(0, -1).join('/')
-        : undefined;
-      const fileName = `${randomUUID()}${ext}`;
-      const relativePath = subdir ? join(subdir, fileName) : fileName;
+        : 'files';
+      const key = `${keyPrefix}/${randomUUID()}${ext}`;
 
-      this.ensureUploadDirExists(subdir);
-      const filePath = join(this.uploadDir, relativePath);
-      writeFileSync(filePath, buffer);
+      const stored = await this.storageAccess.getProvider().save(buffer, {
+        key,
+        contentType,
+        visibility: 'private',
+      });
 
-      return `/uploads/${relativePath.replace(/\\/g, '/')}`;
-    } catch (error) {
+      return stored.path;
+    } catch {
       throw new InternalServerErrorException('Failed to save file');
     }
+  }
+
+  async getSignedDownloadUrl(
+    key: string,
+    requesterId: string,
+    isAdmin = false,
+  ): Promise<string> {
+    return this.storageAccess.getSignedDownloadUrl(key, requesterId, isAdmin);
+  }
+
+  async getSignedUploadUrl(
+    originalName: string,
+    ownerId: string,
+    contentType: string,
+  ) {
+    return this.storageAccess.getSignedUploadUrl(
+      originalName,
+      ownerId,
+      contentType,
+    );
+  }
+
+  async deleteFile(keyOrPath: string): Promise<void> {
+    await this.storageAccess.getProvider().delete(this.toStorageKey(keyOrPath));
   }
 }

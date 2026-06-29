@@ -26,8 +26,11 @@ import { AdminSavingsService } from './admin-savings.service';
 import { AdminDisputesService } from './admin-disputes.service';
 import { AdminAuditLogsService } from './admin-audit-logs.service';
 import { AdminNotificationsService } from './admin-notifications.service';
+import { AdminNotificationRateLimiterService } from './admin-notification-rate-limiter.service';
 import { AdminTransactionsService } from './admin-transactions.service';
+import { AdminConfirmationService } from './admin-confirmation.service';
 import { AdminTransactionNote } from './entities/admin-transaction-note.entity';
+import { AdminConfirmation } from './entities/admin-confirmation.entity';
 import { User } from '../user/entities/user.entity';
 import { UserSubscription } from '../savings/entities/user-subscription.entity';
 import { SavingsProduct } from '../savings/entities/savings-product.entity';
@@ -36,6 +39,8 @@ import { WithdrawalRequest } from '../savings/entities/withdrawal-request.entity
 import { AuditLog } from '../../common/entities/audit-log.entity';
 import { Transaction } from '../transactions/entities/transaction.entity';
 import { Dispute, DisputeTimeline } from '../disputes/entities/dispute.entity';
+import { Notification } from '../notifications/entities/notification.entity';
+import { JobQueueModule } from '../job-queue/job-queue.module';
 
 @Module({
   imports: [
@@ -48,9 +53,9 @@ import { Dispute, DisputeTimeline } from '../disputes/entities/dispute.entity';
       AuditLog,
       Transaction,
       AdminTransactionNote,
+      AdminConfirmation,
       Dispute,
       DisputeTimeline,
-      AuditLog,
       Notification,
     ]),
     UserModule,
@@ -59,6 +64,7 @@ import { Dispute, DisputeTimeline } from '../disputes/entities/dispute.entity';
     BlockchainModule,
     CircuitBreakerModule,
     NotificationsModule,
+    JobQueueModule,
     EventEmitterModule,
   ],
   controllers: [
@@ -67,6 +73,7 @@ import { Dispute, DisputeTimeline } from '../disputes/entities/dispute.entity';
     AdminWaitlistController,
     AdminUsersController,
     AdminWithdrawalController,
+    AdminNotificationsController,
   ],
   providers: [
     AdminUsersService,
@@ -74,9 +81,15 @@ import { Dispute, DisputeTimeline } from '../disputes/entities/dispute.entity';
     AdminDisputesService,
     AdminAuditLogsService,
     AdminNotificationsService,
+    AdminNotificationRateLimiterService,
     AdminTransactionsService,
     AdminWithdrawalService,
+    AdminConfirmationService,
   ],
-  exports: [AdminDisputesService, AdminAuditLogsService],
+  exports: [
+    AdminDisputesService,
+    AdminAuditLogsService,
+    AdminConfirmationService,
+  ],
 })
 export class AdminModule {}

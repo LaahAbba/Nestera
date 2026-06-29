@@ -20,6 +20,7 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminHighRisk } from '../../common/decorators/admin-high-risk.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { AdminUsersService } from './admin-users.service';
 import { AdminUsersQueryDto } from './dto/admin-users-query.dto';
@@ -45,7 +46,9 @@ export class AdminUsersController {
     status: 200,
     description: 'Paginated user list with savings and transaction totals',
   })
-  listUsers(@Query() query: AdminUsersQueryDto): Promise<PageDto<AdminUserListItemDto>> {
+  listUsers(
+    @Query() query: AdminUsersQueryDto,
+  ): Promise<PageDto<AdminUserListItemDto>> {
     return this.adminUsersService.listUsers(query);
   }
 
@@ -56,7 +59,12 @@ export class AdminUsersController {
   }
 
   @Patch(':id/role')
-  @ApiOperation({ summary: 'Update user role' })
+  @AdminHighRisk()
+  @ApiOperation({
+    summary: 'Update user role',
+    description: 'High-risk operation. Requires confirmation on first attempt.',
+  })
+  @ApiResponse({ status: 403, description: 'Confirmation required' })
   updateRole(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserRoleDto,
@@ -65,7 +73,12 @@ export class AdminUsersController {
   }
 
   @Patch(':id/status')
-  @ApiOperation({ summary: 'Activate or deactivate a user account' })
+  @AdminHighRisk()
+  @ApiOperation({
+    summary: 'Activate or deactivate a user account',
+    description: 'High-risk operation. Requires confirmation on first attempt.',
+  })
+  @ApiResponse({ status: 403, description: 'Confirmation required' })
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserStatusDto,
@@ -74,8 +87,13 @@ export class AdminUsersController {
   }
 
   @Post('bulk-action')
+  @AdminHighRisk()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Bulk activate/deactivate/email/export users' })
+  @ApiOperation({
+    summary: 'Bulk activate/deactivate/email/export users',
+    description: 'High-risk operation. Requires confirmation on first attempt.',
+  })
+  @ApiResponse({ status: 403, description: 'Confirmation required' })
   bulkAction(@Body() dto: BulkActionDto) {
     return this.adminUsersService.bulkAction(dto);
   }

@@ -3,7 +3,6 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { existsSync, unlinkSync } from 'fs';
 import sharp from 'sharp';
 import { QUEUE_NAMES } from '../job-queue.constants';
 import {
@@ -79,12 +78,14 @@ export class AvatarProcessor extends WorkerHost {
     storagePath: string,
     mimeType: string,
   ): Promise<Record<string, unknown>> {
-    const absolutePath = this.storageService.resolvePath(storagePath);
-    if (!existsSync(absolutePath)) {
+    let sourceBuffer: Buffer;
+    try {
+      sourceBuffer = this.storageService.readFileBuffer(storagePath);
+    } catch {
       throw new Error(`Source file not found: ${storagePath}`);
     }
 
-    const image = sharp(absolutePath);
+    const image = sharp(sourceBuffer);
     const meta = await image.metadata();
 
     const maxDimension = 4096;
@@ -110,7 +111,7 @@ export class AvatarProcessor extends WorkerHost {
     const outputFormat = mimeType === 'image/png' ? 'png' : 'webp';
     const outputExt = outputFormat === 'png' ? '.png' : '.webp';
 
-    const processedBuffer = await sharp(absolutePath)
+    const processedBuffer = await sharp(sourceBuffer)
       .rotate()
       .resize(AVATAR_SIZE, AVATAR_SIZE, {
         fit: 'cover',
@@ -119,7 +120,7 @@ export class AvatarProcessor extends WorkerHost {
       .toFormat(outputFormat, { quality: 85 })
       .toBuffer();
 
-    const thumbnailBuffer = await sharp(absolutePath)
+    const thumbnailBuffer = await sharp(sourceBuffer)
       .rotate()
       .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, {
         fit: 'cover',
@@ -138,7 +139,7 @@ export class AvatarProcessor extends WorkerHost {
     );
 
     try {
-      unlinkSync(absolutePath);
+      await this.storageService.deleteFile(storagePath);
     } catch {
       this.logger.warn(`Could not delete original avatar file: ${storagePath}`);
     }
