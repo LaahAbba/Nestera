@@ -5,6 +5,7 @@ export const QUEUE_NAMES = {
   REPORTS: 'reports',
   ANALYTICS_AGGREGATION: 'analytics-aggregation',
   DISPUTE_EVIDENCE: 'dispute-evidence',
+  AVATAR: 'avatar',
 } as const;
 
 export const JOB_NAMES = {
@@ -14,6 +15,7 @@ export const JOB_NAMES = {
   GENERATE_REPORT: 'generate-report',
   PROCESS_AGGREGATION: 'process-aggregation',
   PROCESS_DISPUTE_EVIDENCE: 'process-dispute-evidence',
+  PROCESS_AVATAR: 'process-avatar',
 } as const;
 
 export const DLQ_SUFFIX = '-dlq';

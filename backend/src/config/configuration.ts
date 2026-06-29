@@ -94,6 +94,25 @@ export default () => ({
   redis: {
     url: process.env.REDIS_URL,
   },
+  upload: {
+    defaultMaxSize: parseInt(
+      process.env.UPLOAD_DEFAULT_MAX_SIZE || String(10 * 1024 * 1024),
+      10,
+    ),
+    maxAvatarSize: parseInt(
+      process.env.UPLOAD_MAX_AVATAR_SIZE || String(5 * 1024 * 1024),
+      10,
+    ),
+    maxDocumentSize: parseInt(
+      process.env.UPLOAD_MAX_DOCUMENT_SIZE || String(10 * 1024 * 1024),
+      10,
+    ),
+    maxBackupRestoreSize: parseInt(
+      process.env.UPLOAD_MAX_BACKUP_SIZE || String(1024 * 1024 * 1024),
+      10,
+    ),
+    virusScanningEnabled: process.env.UPLOAD_VIRUS_SCANNING_ENABLED === 'true',
+  },
   jobQueue: {
     defaultAttempts: parseInt(
       process.env.JOB_QUEUE_DEFAULT_ATTEMPTS || '3',

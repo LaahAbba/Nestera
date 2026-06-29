@@ -11,23 +11,50 @@ export class StorageService {
     this.ensureUploadDirExists();
   }
 
-  private ensureUploadDirExists() {
-    if (!existsSync(this.uploadDir)) {
-      mkdirSync(this.uploadDir, { recursive: true });
+  private ensureUploadDirExists(subdir?: string) {
+    const dir = subdir ? join(this.uploadDir, subdir) : this.uploadDir;
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
     }
   }
 
-  async saveFile(file: any): Promise<string> {
+  resolvePath(storagePath: string): string {
+    const relative = storagePath.startsWith('/uploads/')
+      ? storagePath.slice('/uploads/'.length)
+      : storagePath;
+    return join(this.uploadDir, relative);
+  }
+
+  async saveFile(file: any, subdir?: string): Promise<string> {
     try {
       const fileExtension = extname(file.originalname);
       const fileName = `${randomUUID()}${fileExtension}`;
-      const filePath = join(this.uploadDir, fileName);
+      const relativePath = subdir ? join(subdir, fileName) : fileName;
 
+      this.ensureUploadDirExists(subdir);
+      const filePath = join(this.uploadDir, relativePath);
       writeFileSync(filePath, file.buffer);
 
-      // Return the filename/path that will be stored in the DB
-      // In a real app, this might be a full URL or a relative path
-      return `/uploads/${fileName}`;
+      return `/uploads/${relativePath.replace(/\\/g, '/')}`;
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to save file');
+    }
+  }
+
+  async saveBuffer(buffer: Buffer, pathTemplate: string): Promise<string> {
+    try {
+      const ext = extname(pathTemplate);
+      const subdir = pathTemplate.includes('/')
+        ? pathTemplate.split('/').slice(0, -1).join('/')
+        : undefined;
+      const fileName = `${randomUUID()}${ext}`;
+      const relativePath = subdir ? join(subdir, fileName) : fileName;
+
+      this.ensureUploadDirExists(subdir);
+      const filePath = join(this.uploadDir, relativePath);
+      writeFileSync(filePath, buffer);
+
+      return `/uploads/${relativePath.replace(/\\/g, '/')}`;
     } catch (error) {
       throw new InternalServerErrorException('Failed to save file');
     }

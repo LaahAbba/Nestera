@@ -1,6 +1,14 @@
+jest.mock('./receipt.service', () => ({
+  ReceiptService: jest.fn().mockImplementation(() => ({
+    generateReceipt: jest.fn(),
+    getReceiptMetadata: jest.fn(),
+  })),
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { TransactionsController } from './transactions.controller';
 import { TransactionsService } from './transactions.service';
+import { ReceiptService } from './receipt.service';
 import { TransactionQueryDto } from './dto/transaction-query.dto';
 import {
   LedgerTransactionStatus,
@@ -35,6 +43,13 @@ describe('TransactionsController', () => {
         {
           provide: TransactionsService,
           useValue: mockTransactionsService,
+        },
+        {
+          provide: ReceiptService,
+          useValue: {
+            generateReceipt: jest.fn(),
+            getReceiptMetadata: jest.fn(),
+          },
         },
       ],
     }).compile();

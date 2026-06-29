@@ -40,6 +40,14 @@ export interface DisputeEvidenceJobData {
   uploadedBy: string;
 }
 
+export interface AvatarJobData {
+  uploadId: string;
+  userId: string;
+  storagePath: string;
+  mimeType: string;
+  originalFilename: string;
+}
+
 @Injectable()
 export class JobQueueService {
   private readonly logger = new Logger(JobQueueService.name);
@@ -55,6 +63,8 @@ export class JobQueueService {
     private readonly reportQueue: Queue,
     @InjectQueue(QUEUE_NAMES.DISPUTE_EVIDENCE)
     private readonly disputeEvidenceQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.AVATAR)
+    private readonly avatarQueue: Queue,
   ) {}
 
   async addNotificationJob(data: NotificationJobData, opts?: JobsOptions) {
@@ -122,6 +132,21 @@ export class JobQueueService {
     return job;
   }
 
+  async addAvatarProcessingJob(data: AvatarJobData, opts?: JobsOptions) {
+    const job = await this.avatarQueue.add(JOB_NAMES.PROCESS_AVATAR, data, {
+      ...opts,
+      jobId: `avatar-${data.uploadId}`,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 },
+      removeOnComplete: { count: 200 },
+      removeOnFail: { count: 500 },
+    });
+    this.logger.debug(
+      `Queued avatar processing job ${job.id} for uploadId=${data.uploadId} userId=${data.userId}`,
+    );
+    return job;
+  }
+
   async getQueueStatus(queueName: string) {
     const queue = this.getQueue(queueName);
     if (!queue) return null;
@@ -169,6 +194,7 @@ export class JobQueueService {
       [QUEUE_NAMES.BLOCKCHAIN]: this.blockchainQueue,
       [QUEUE_NAMES.REPORTS]: this.reportQueue,
       [QUEUE_NAMES.DISPUTE_EVIDENCE]: this.disputeEvidenceQueue,
+      [QUEUE_NAMES.AVATAR]: this.avatarQueue,
     };
     return map[queueName] || null;
   }

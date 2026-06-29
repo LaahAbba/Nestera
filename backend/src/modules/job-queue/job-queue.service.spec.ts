@@ -20,12 +20,16 @@ describe('JobQueueService', () => {
   let emailQueue: ReturnType<typeof createMockQueue>;
   let blockchainQueue: ReturnType<typeof createMockQueue>;
   let reportQueue: ReturnType<typeof createMockQueue>;
+  let disputeEvidenceQueue: ReturnType<typeof createMockQueue>;
+  let avatarQueue: ReturnType<typeof createMockQueue>;
 
   beforeEach(async () => {
     notificationQueue = createMockQueue();
     emailQueue = createMockQueue();
     blockchainQueue = createMockQueue();
     reportQueue = createMockQueue();
+    disputeEvidenceQueue = createMockQueue();
+    avatarQueue = createMockQueue();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -40,6 +44,11 @@ describe('JobQueueService', () => {
           useValue: blockchainQueue,
         },
         { provide: getQueueToken(QUEUE_NAMES.REPORTS), useValue: reportQueue },
+        {
+          provide: getQueueToken(QUEUE_NAMES.DISPUTE_EVIDENCE),
+          useValue: disputeEvidenceQueue,
+        },
+        { provide: getQueueToken(QUEUE_NAMES.AVATAR), useValue: avatarQueue },
       ],
     }).compile();
 
@@ -150,7 +159,7 @@ describe('JobQueueService', () => {
   describe('getAllQueuesStatus', () => {
     it('should return statuses for all queues', async () => {
       const statuses = await service.getAllQueuesStatus();
-      expect(statuses).toHaveLength(4);
+      expect(statuses).toHaveLength(6);
     });
   });
 

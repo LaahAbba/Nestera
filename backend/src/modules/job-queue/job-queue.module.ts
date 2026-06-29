@@ -8,9 +8,13 @@ import { EmailProcessor } from './processors/email.processor';
 import { BlockchainProcessor } from './processors/blockchain.processor';
 import { ReportProcessor } from './processors/report.processor';
 import { DisputeEvidenceProcessor } from './processors/dispute-evidence.processor';
+import { AvatarProcessor } from './processors/avatar.processor';
 import { JobQueueService } from './job-queue.service';
 import { JobQueueController } from './job-queue.controller';
 import { DisputeEvidence } from '../disputes/entities/dispute-evidence.entity';
+import { AvatarUpload } from '../user/entities/avatar-upload.entity';
+import { User } from '../user/entities/user.entity';
+import { StorageModule } from '../storage/storage.module';
 
 const defaultJobOptions = {
   attempts: 3,
@@ -22,7 +26,8 @@ const defaultJobOptions = {
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([DisputeEvidence]),
+    StorageModule,
+    TypeOrmModule.forFeature([DisputeEvidence, AvatarUpload, User]),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -59,6 +64,7 @@ const defaultJobOptions = {
       },
       { name: QUEUE_NAMES.REPORTS, defaultJobOptions },
       { name: QUEUE_NAMES.DISPUTE_EVIDENCE, defaultJobOptions },
+      { name: QUEUE_NAMES.AVATAR, defaultJobOptions },
     ),
   ],
   controllers: [JobQueueController],
@@ -69,6 +75,7 @@ const defaultJobOptions = {
     BlockchainProcessor,
     ReportProcessor,
     DisputeEvidenceProcessor,
+    AvatarProcessor,
   ],
   exports: [JobQueueService, BullModule],
 })
