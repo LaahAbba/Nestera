@@ -29,6 +29,7 @@ export interface ReportJobData {
   reportType: string;
   userId: string;
   params: Record<string, any>;
+  scheduleId?: string;
 }
 
 export interface DisputeEvidenceJobData {

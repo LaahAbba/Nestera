@@ -15,7 +15,9 @@ import { JobQueueController } from './job-queue.controller';
 import { DisputeEvidence } from '../disputes/entities/dispute-evidence.entity';
 import { AvatarUpload } from '../user/entities/avatar-upload.entity';
 import { User } from '../user/entities/user.entity';
+import { ReportSchedule } from '../reports/entities/report-schedule.entity';
 import { StorageModule } from '../storage/storage.module';
+import { ReportsModule } from '../reports/reports.module';
 
 const defaultJobOptions = {
   attempts: 3,
@@ -28,11 +30,13 @@ const defaultJobOptions = {
 @Module({
   imports: [
     StorageModule,
+    ReportsModule,
     TypeOrmModule.forFeature([
       Notification,
       DisputeEvidence,
       AvatarUpload,
       User,
+      ReportSchedule,
     ]),
     BullModule.forRootAsync({
       imports: [ConfigModule],
