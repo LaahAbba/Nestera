@@ -19,6 +19,7 @@ import { Vote, VoteDirection } from './entities/vote.entity';
 import { Delegation } from './entities/delegation.entity';
 import { TransactionsService } from '../transactions/transactions.service';
 import { LedgerTransaction } from '../blockchain/entities/transaction.entity';
+import { AuditLogService } from '../../common/services/audit-log.service';
 
 describe('GovernanceService', () => {
   let service: GovernanceService;
@@ -111,6 +112,10 @@ describe('GovernanceService', () => {
         {
           provide: getRepositoryToken(Delegation),
           useValue: delegationRepo,
+        },
+        {
+          provide: AuditLogService,
+          useValue: { log: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();
