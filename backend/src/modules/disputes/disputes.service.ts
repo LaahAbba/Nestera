@@ -136,9 +136,12 @@ export class DisputesService {
   }
 
   async findAll(): Promise<Dispute[]> {
+    // Stable sort: primary key createdAt DESC, tie-breaker id DESC so that
+    // concurrent inserts at the same millisecond never cause duplicate/missing
+    // items across paginated pages.
     return await this.disputeRepository.find({
       relations: ['claim', 'messages', 'timeline'],
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', id: 'DESC' },
     });
   }
 
