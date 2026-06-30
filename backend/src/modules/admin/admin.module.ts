@@ -31,11 +31,13 @@ import { AdminTransactionsService } from './admin-transactions.service';
 import { AdminConfirmationService } from './admin-confirmation.service';
 import { AdminExportService } from './services/admin-export.service';
 import { AdminExportProcessor } from './processors/admin-export.processor';
+import { AdminLedgerService } from './admin-ledger.service';
 import { ADMIN_EXPORT_QUEUE } from './admin-export.constants';
 import { AdminExportJob } from './entities/admin-export-job.entity';
-import { DataScopeService } from '../../common/services/data-scope.service';
 import { AdminTransactionNote } from './entities/admin-transaction-note.entity';
 import { AdminConfirmation } from './entities/admin-confirmation.entity';
+import { AdminCorrectionLedger } from './entities/admin-correction-ledger.entity';
+import { DataScopeService } from '../../common/services/data-scope.service';
 import { User } from '../user/entities/user.entity';
 import { UserSubscription } from '../savings/entities/user-subscription.entity';
 import { SavingsProduct } from '../savings/entities/savings-product.entity';
@@ -59,6 +61,7 @@ import { JobQueueModule } from '../job-queue/job-queue.module';
       Transaction,
       AdminTransactionNote,
       AdminConfirmation,
+      AdminCorrectionLedger,
       Dispute,
       DisputeTimeline,
       Notification,
@@ -97,6 +100,7 @@ import { JobQueueModule } from '../job-queue/job-queue.module';
     AdminConfirmationService,
     AdminExportService,
     AdminExportProcessor,
+    AdminLedgerService,
     DataScopeService,
   ],
   exports: [
@@ -104,6 +108,7 @@ import { JobQueueModule } from '../job-queue/job-queue.module';
     AdminAuditLogsService,
     AdminConfirmationService,
     AdminExportService,
+    AdminLedgerService,
   ],
 })
 export class AdminModule {}
