@@ -301,8 +301,14 @@ export class SavingsService {
     } else if (sort === 'tvl') {
       dtos.sort((a, b) => b.tvlAmount - a.tvlAmount);
     } else {
-      // Default sort by createdAt DESC
-      dtos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      // Default sort: createdAt DESC with id DESC as a tie-breaker to ensure
+      // stable, deterministic ordering when multiple products share the same
+      // createdAt timestamp (e.g. seeded data or concurrent inserts).
+      dtos.sort((a, b) => {
+        const timeDiff = b.createdAt.getTime() - a.createdAt.getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return b.id < a.id ? -1 : b.id > a.id ? 1 : 0;
+      });
     }
 
     return dtos;
@@ -909,7 +915,10 @@ export class SavingsService {
     const [goals, user, subscriptions] = await Promise.all([
       this.goalRepository.find({
         where: { userId },
-        order: { createdAt: 'DESC' },
+        // Stable sort: primary key createdAt DESC, tie-breaker id DESC so that
+        // concurrent inserts at the same millisecond never cause duplicate/missing
+        // items across paginated pages.
+        order: { createdAt: 'DESC', id: 'DESC' },
       }),
       this.userRepository.findOne({
         where: { id: userId },
