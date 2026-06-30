@@ -29,6 +29,7 @@ export interface ReportJobData {
   reportType: string;
   userId: string;
   params: Record<string, any>;
+  scheduleId?: string;
 }
 
 export interface DisputeEvidenceJobData {
@@ -38,6 +39,14 @@ export interface DisputeEvidenceJobData {
   mimeType: string;
   originalFilename: string;
   uploadedBy: string;
+}
+
+export interface AvatarJobData {
+  uploadId: string;
+  userId: string;
+  storagePath: string;
+  mimeType: string;
+  originalFilename: string;
 }
 
 export interface AuditLogExportJobData {
@@ -68,6 +77,8 @@ export class JobQueueService {
     private readonly reportQueue: Queue,
     @InjectQueue(QUEUE_NAMES.DISPUTE_EVIDENCE)
     private readonly disputeEvidenceQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.AVATAR)
+    private readonly avatarQueue: Queue,
     @InjectQueue(QUEUE_NAMES.AUDIT_LOG_EXPORT)
     private readonly auditLogExportQueue: Queue,
   ) {}
@@ -137,10 +148,22 @@ export class JobQueueService {
     return job;
   }
 
-  async addAuditLogExportJob(
-    data: AuditLogExportJobData,
-    opts?: JobsOptions,
-  ) {
+  async addAvatarProcessingJob(data: AvatarJobData, opts?: JobsOptions) {
+    const job = await this.avatarQueue.add(JOB_NAMES.PROCESS_AVATAR, data, {
+      ...opts,
+      jobId: `avatar-${data.uploadId}`,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 },
+      removeOnComplete: { count: 200 },
+      removeOnFail: { count: 500 },
+    });
+    this.logger.debug(
+      `Queued avatar processing job ${job.id} for uploadId=${data.uploadId} userId=${data.userId}`,
+    );
+    return job;
+  }
+
+  async addAuditLogExportJob(data: AuditLogExportJobData, opts?: JobsOptions) {
     const job = await this.auditLogExportQueue.add(
       JOB_NAMES.EXPORT_AUDIT_LOGS,
       data,
@@ -213,6 +236,7 @@ export class JobQueueService {
       [QUEUE_NAMES.BLOCKCHAIN]: this.blockchainQueue,
       [QUEUE_NAMES.REPORTS]: this.reportQueue,
       [QUEUE_NAMES.DISPUTE_EVIDENCE]: this.disputeEvidenceQueue,
+      [QUEUE_NAMES.AVATAR]: this.avatarQueue,
       [QUEUE_NAMES.AUDIT_LOG_EXPORT]: this.auditLogExportQueue,
     };
     return map[queueName] || null;

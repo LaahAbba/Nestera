@@ -9,6 +9,7 @@ import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 import { GracefulShutdownInterceptor } from './common/interceptors/graceful-shutdown.interceptor';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
+import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { AdminConfirmationInterceptor } from './common/interceptors/admin-confirmation.interceptor';
 import { AdminConfirmationFilter } from './common/filters/admin-confirmation.filter';
 import { TieredThrottlerGuard } from './common/guards/tiered-throttler.guard';
@@ -406,6 +407,9 @@ const envValidationSchema = Joi.object({
     {
       provide: APP_INTERCEPTOR,
       useClass: AdminConfirmationInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
       useClass: MetricsInterceptor,
     },
     {

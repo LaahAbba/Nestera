@@ -226,7 +226,14 @@ export default () => ({
       process.env.UPLOAD_MAX_DOCUMENT_SIZE || String(10 * 1024 * 1024),
       10,
     ),
-    signedUrlTtlSeconds: parseInt(process.env.STORAGE_SIGNED_URL_TTL || '3600', 10),
+    maxBackupRestoreSize: parseInt(
+      process.env.UPLOAD_MAX_BACKUP_SIZE || String(1024 * 1024 * 1024),
+      10,
+    ),
+    signedUrlTtlSeconds: parseInt(
+      process.env.STORAGE_SIGNED_URL_TTL || '3600',
+      10,
+    ),
     s3Bucket: process.env.STORAGE_S3_BUCKET,
     s3Region: process.env.STORAGE_S3_REGION ?? 'us-east-1',
     awsAccessKeyId: process.env.STORAGE_AWS_ACCESS_KEY_ID,

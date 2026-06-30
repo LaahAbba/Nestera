@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import compression from 'compression';
 import helmet from 'helmet';
-import { json, urlencoded } from 'body-parser';
+import express from 'express';
+import { constants as zlibConstants } from 'zlib';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
@@ -84,10 +85,8 @@ async function bootstrap() {
     compression({
       threshold: compressionThreshold,
       brotli: {
-        enabled: true,
-        zlib: {},
         params: {
-          [require('zlib').constants.BROTLI_PARAM_QUALITY]: 4,
+          [zlibConstants.BROTLI_PARAM_QUALITY]: 4,
         },
       },
       filter: (req, res) => {
@@ -110,8 +109,8 @@ async function bootstrap() {
   // Request body size limits
   const jsonBodyLimit = process.env.JSON_BODY_LIMIT || '1mb';
   const urlencodedLimit = process.env.URLENCODED_BODY_LIMIT || '1mb';
-  app.use(json({ limit: jsonBodyLimit }));
-  app.use(urlencoded({ limit: urlencodedLimit, extended: true }));
+  app.use(express.json({ limit: jsonBodyLimit }));
+  app.use(express.urlencoded({ limit: urlencodedLimit, extended: true }));
 
   app.use(
     helmet({
@@ -134,7 +133,8 @@ async function bootstrap() {
     const methods = corsConfig.methods;
     const allowedHeaders = corsConfig.allowedHeaders;
     const credentials =
-      corsConfig.credentials && !allowedOrigins.some((origin) => origin === '*');
+      corsConfig.credentials &&
+      !allowedOrigins.some((origin) => origin === '*');
 
     const corsOptions: CorsOptions = {
       origin: (origin, callback) => {

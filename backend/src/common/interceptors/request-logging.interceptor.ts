@@ -125,7 +125,12 @@ export class RequestLoggingInterceptor implements NestInterceptor {
         const duration = Date.now() - startTime;
         const statusCode = response.statusCode;
 
-        this.apmService?.trackHttpRequest(method, rawPath, statusCode, duration);
+        this.apmService?.trackHttpRequest(
+          method,
+          rawPath,
+          statusCode,
+          duration,
+        );
 
         const logPayload = {
           msg: `← ${method} ${url} ${statusCode} (${duration}ms)`,
@@ -150,7 +155,12 @@ export class RequestLoggingInterceptor implements NestInterceptor {
         const statusCode = error.status ?? 500;
         const isClientError = statusCode < 500;
 
-        this.apmService?.trackHttpRequest(method, rawPath, statusCode, duration);
+        this.apmService?.trackHttpRequest(
+          method,
+          rawPath,
+          statusCode,
+          duration,
+        );
         if (!isClientError) {
           this.apmService?.trackError(error, {
             route: rawPath,
@@ -187,9 +197,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     );
   }
 
-  private extractDomainIdentifiers(
-    request: Request,
-  ): DomainIdentifiers {
+  private extractDomainIdentifiers(request: Request): DomainIdentifiers {
     const identifiers: DomainIdentifiers = {};
     const params = (request as any).params || {};
     const body = (request as any).body || {};

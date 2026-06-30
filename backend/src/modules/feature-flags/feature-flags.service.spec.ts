@@ -72,14 +72,16 @@ describe('FeatureFlagsService', () => {
         targetUsers: [],
         targetNetworks: [],
         targetSegments: [],
-      } as FeatureFlag;
+      } as unknown as FeatureFlag;
 
       mockCache.get.mockResolvedValue(null);
       mockRepository.findOne.mockResolvedValue(flag);
 
       const result = await service.evaluate('test-flag', {});
 
-      expect(mockRepository.findOne).toHaveBeenCalledWith({ where: { key: 'test-flag' } });
+      expect(mockRepository.findOne).toHaveBeenCalledWith({
+        where: { key: 'test-flag' },
+      });
       expect(mockCache.set).toHaveBeenCalled();
       expect(result.value).toBe(true);
     });
@@ -99,14 +101,14 @@ describe('FeatureFlagsService', () => {
         targetUsers: ['G1234567890', 'GABCDEFGHIJ'],
         targetNetworks: ['testnet'],
         targetSegments: ['beta-users'],
-      } as FeatureFlag;
+      } as unknown as FeatureFlag;
 
       mockRepository.findOne.mockResolvedValue(flag);
       mockRepository.save.mockResolvedValue(flag);
 
       await service.update('test-flag', { enabled: false });
 
-      expect(mockCache.del).toHaveBeenCalledTimes(3);
+      expect(mockCache.del).toHaveBeenCalledTimes(4);
     });
 
     it('should invalidate cache on toggle', async () => {
@@ -119,17 +121,19 @@ describe('FeatureFlagsService', () => {
         enabled: false,
         forceDisabled: false,
         defaultValue: false,
-        targetUsers: [],
+        targetUsers: ['G1234567890'],
         targetNetworks: [],
         targetSegments: [],
-      } as FeatureFlag;
+      } as unknown as FeatureFlag;
 
       mockRepository.findOne.mockResolvedValue(flag);
-      mockRepository.save.mockResolvedValue(flag);
+      mockRepository.save.mockResolvedValue({ ...flag, enabled: true });
 
       await service.toggle('test-flag');
 
-      expect(mockCache.del).toHaveBeenCalled();
+      expect(mockCache.del).toHaveBeenCalledWith(
+        'flag:test-flag|addr:G123456789',
+      );
     });
 
     it('should invalidate cache on remove', async () => {
@@ -142,17 +146,19 @@ describe('FeatureFlagsService', () => {
         enabled: false,
         forceDisabled: false,
         defaultValue: false,
-        targetUsers: [],
+        targetUsers: ['G1234567890'],
         targetNetworks: [],
         targetSegments: [],
-      } as FeatureFlag;
+      } as unknown as FeatureFlag;
 
       mockRepository.findOne.mockResolvedValue(flag);
       mockRepository.remove.mockResolvedValue(undefined);
 
       await service.remove('test-flag');
 
-      expect(mockCache.del).toHaveBeenCalled();
+      expect(mockCache.del).toHaveBeenCalledWith(
+        'flag:test-flag|addr:G123456789',
+      );
     });
   });
 
@@ -170,7 +176,7 @@ describe('FeatureFlagsService', () => {
         targetUsers: [],
         targetNetworks: [],
         targetSegments: [],
-      } as FeatureFlag;
+      } as unknown as FeatureFlag;
 
       mockCache.get.mockResolvedValue(null);
       mockRepository.findOne.mockResolvedValue(flag);
@@ -190,15 +196,17 @@ describe('FeatureFlagsService', () => {
         enabled: true,
         forceDisabled: false,
         defaultValue: false,
-        targetUsers: ['G123'],
+        targetUsers: ['G1234567890'],
         targetNetworks: [],
         targetSegments: [],
-      } as FeatureFlag;
+      } as unknown as FeatureFlag;
 
       mockCache.get.mockResolvedValue(null);
       mockRepository.findOne.mockResolvedValue(flag);
 
-      const result = await service.evaluate('test-flag', { address: 'G1234567890' });
+      const result = await service.evaluate('test-flag', {
+        address: 'G1234567890',
+      });
 
       expect(result.value).toBe(true);
       expect(result.reason).toBe('user_targeted');
@@ -217,12 +225,14 @@ describe('FeatureFlagsService', () => {
         targetUsers: [],
         targetNetworks: [],
         targetSegments: ['beta-users'],
-      } as FeatureFlag;
+      } as unknown as FeatureFlag;
 
       mockCache.get.mockResolvedValue(null);
       mockRepository.findOne.mockResolvedValue(flag);
 
-      const result = await service.evaluate('test-flag', { segments: ['beta-users'] });
+      const result = await service.evaluate('test-flag', {
+        segments: ['beta-users'],
+      });
 
       expect(result.value).toBe(true);
       expect(result.reason).toBe('segment_matched');

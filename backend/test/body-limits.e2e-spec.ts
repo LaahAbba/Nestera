@@ -2,7 +2,7 @@ import { Controller, Post, Body, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { json } from 'body-parser';
+import express from 'express';
 
 @Controller()
 class BodyLimitTestController {
@@ -26,7 +26,7 @@ describe('Request Body Size Limits', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.use(json({ limit: '100kb' }));
+    app.use(express.json({ limit: '100kb' }));
     await app.init();
   });
 

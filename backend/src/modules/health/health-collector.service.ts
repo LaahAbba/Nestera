@@ -11,7 +11,10 @@ import {
 } from './indicators/external-services.health';
 import { StorageHealthIndicator } from './indicators/storage.health';
 import { SystemHealthIndicator } from './indicators/system.health';
-import { HealthHistoryService } from './health-history.service';
+import {
+  HealthCheckResult,
+  HealthHistoryService,
+} from './health-history.service';
 import { ShutdownTrackedTask } from '../../common/decorators/shutdown-task.decorator';
 
 @Injectable()
@@ -41,7 +44,10 @@ export class HealthCollectorService {
       { name: 'indexer', check: () => this.indexer.isHealthy('indexer') },
       { name: 'redis', check: () => this.redis.isHealthy('redis') },
       { name: 'email', check: () => this.email.isHealthy('email') },
-      { name: 'soroban-rpc', check: () => this.sorobanRpc.isHealthy('soroban-rpc') },
+      {
+        name: 'soroban-rpc',
+        check: () => this.sorobanRpc.isHealthy('soroban-rpc'),
+      },
       { name: 'horizon', check: () => this.horizon.isHealthy('horizon') },
       { name: 'storage', check: () => this.storage.isHealthy('storage') },
       { name: 'system', check: () => this.system.isHealthy('system') },
@@ -61,7 +67,13 @@ export class HealthCollectorService {
     }
   }
 
-  async runChecks() {
+  private normalizeStatus(status: string): HealthCheckResult['status'] {
+    if (status === 'up') return 'up';
+    if (status === 'degraded') return 'degraded';
+    return 'down';
+  }
+
+  async runChecks(): Promise<HealthCheckResult[]> {
     const timestamp = new Date();
     const results = await Promise.allSettled(
       this.indicators.map(async ({ name, check }) => {
@@ -72,10 +84,7 @@ export class HealthCollectorService {
           const status = (entry?.status as string) ?? 'up';
           return {
             service: name,
-            status: (status === 'up' ? 'up' : status === 'degraded' ? 'degraded' : 'down') as
-              | 'up'
-              | 'down'
-              | 'degraded',
+            status: this.normalizeStatus(status),
             responseTime: Date.now() - start,
             timestamp,
             error: entry?.message as string | undefined,

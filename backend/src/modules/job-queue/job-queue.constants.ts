@@ -5,6 +5,7 @@ export const QUEUE_NAMES = {
   REPORTS: 'reports',
   ANALYTICS_AGGREGATION: 'analytics-aggregation',
   DISPUTE_EVIDENCE: 'dispute-evidence',
+  AVATAR: 'avatar',
   AUDIT_LOG_EXPORT: 'audit-log-export',
 } as const;
 
@@ -15,6 +16,7 @@ export const JOB_NAMES = {
   GENERATE_REPORT: 'generate-report',
   PROCESS_AGGREGATION: 'process-aggregation',
   PROCESS_DISPUTE_EVIDENCE: 'process-dispute-evidence',
+  PROCESS_AVATAR: 'process-avatar',
   EXPORT_AUDIT_LOGS: 'export-audit-logs',
 } as const;
 

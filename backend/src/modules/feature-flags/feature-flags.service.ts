@@ -102,7 +102,8 @@ export class FeatureFlagsService {
     context: FeatureEvaluationContext,
   ): Promise<FeatureEvaluationResult> {
     const cacheKey = this.getCacheKey(key, context);
-    const cached = await this.cacheManager.get<FeatureEvaluationResult>(cacheKey);
+    const cached =
+      await this.cacheManager.get<FeatureEvaluationResult>(cacheKey);
 
     if (cached !== undefined && cached !== null) {
       this.logger.debug(`Cache HIT for feature flag: ${key}`);
@@ -115,7 +116,9 @@ export class FeatureFlagsService {
     const result = this.evaluateFlag(flag, context);
 
     await this.cacheManager.set(cacheKey, result, FEATURE_FLAG_CACHE_TTL);
-    this.logger.debug(`Cache SET for feature flag: ${key} ttl=${FEATURE_FLAG_CACHE_TTL}ms`);
+    this.logger.debug(
+      `Cache SET for feature flag: ${key} ttl=${FEATURE_FLAG_CACHE_TTL}ms`,
+    );
 
     return result;
   }
@@ -124,7 +127,8 @@ export class FeatureFlagsService {
     const parts = [`flag:${key}`];
     if (context.address) parts.push(`addr:${context.address.slice(0, 10)}`);
     if (context.network) parts.push(`net:${context.network}`);
-    if (context.segments?.length) parts.push(`seg:${context.segments.sort().join(',')}`);
+    if (context.segments?.length)
+      parts.push(`seg:${context.segments.sort().join(',')}`);
     return parts.join('|');
   }
 
@@ -143,7 +147,7 @@ export class FeatureFlagsService {
   private async findAllKeysForFlag(key: string): Promise<string[]> {
     const keys: string[] = [];
     const featureFlag = await this.findOne(key);
-    
+
     for (const user of featureFlag.targetUsers || []) {
       keys.push(`flag:${key}|addr:${user.slice(0, 10)}`);
     }
@@ -153,11 +157,14 @@ export class FeatureFlagsService {
     for (const segment of featureFlag.targetSegments || []) {
       keys.push(`flag:${key}|seg:${segment}`);
     }
-    
+
     return keys;
   }
 
-  private evaluateFlag(flag: FeatureFlag, context: FeatureEvaluationContext): FeatureEvaluationResult {
+  private evaluateFlag(
+    flag: FeatureFlag,
+    context: FeatureEvaluationContext,
+  ): FeatureEvaluationResult {
     if (flag.forceDisabled) {
       return { value: false, reason: 'force_disabled' };
     }

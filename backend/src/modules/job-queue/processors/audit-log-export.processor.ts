@@ -52,11 +52,15 @@ export class AuditLogExportProcessor extends WorkerHost {
     this.logger.debug(`Audit log export job ${job.id} completed`);
   }
 
-  private async fetchAuditLogs(filters: AuditLogExportJobData['filters']): Promise<AuditLog[]> {
+  private async fetchAuditLogs(
+    filters: AuditLogExportJobData['filters'],
+  ): Promise<AuditLog[]> {
     const query = this.auditLogRepository.createQueryBuilder('auditLog');
 
     if (filters.actor) {
-      query.andWhere('auditLog.actor LIKE :actor', { actor: `%${filters.actor}%` });
+      query.andWhere('auditLog.actor LIKE :actor', {
+        actor: `%${filters.actor}%`,
+      });
     }
 
     if (filters.action) {

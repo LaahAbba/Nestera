@@ -87,6 +87,10 @@ import { JobQueueModule } from '../job-queue/job-queue.module';
     AdminWithdrawalService,
     AdminConfirmationService,
   ],
-  exports: [AdminDisputesService, AdminAuditLogsService, AdminConfirmationService],
+  exports: [
+    AdminDisputesService,
+    AdminAuditLogsService,
+    AdminConfirmationService,
+  ],
 })
 export class AdminModule {}
