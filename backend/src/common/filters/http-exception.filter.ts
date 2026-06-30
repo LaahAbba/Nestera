@@ -9,6 +9,10 @@ import {
 import { Request, Response } from 'express';
 import { ErrorCode } from '../enums/error-code.enum';
 import { DomainException } from '../exceptions/domain.exception';
+import {
+  ClassValidatorErrorLike,
+  flattenValidationErrors,
+} from '../validators/validation-error.utils';
 
 interface StandardErrorResponse {
   success: false;
@@ -43,7 +47,7 @@ const STATUS_TO_ERROR_CODE: Record<number, ErrorCode> = {
   [HttpStatus.CONFLICT]: ErrorCode.CONFLICT,
   [HttpStatus.TOO_MANY_REQUESTS]: ErrorCode.TOO_MANY_REQUESTS,
   [HttpStatus.SERVICE_UNAVAILABLE]: ErrorCode.SERVICE_UNAVAILABLE,
-  [HttpStatus.REQUEST_ENTITY_TOO_LARGE]: ErrorCode.PAYLOAD_TOO_LARGE,
+  [HttpStatus.PAYLOAD_TOO_LARGE]: ErrorCode.PAYLOAD_TOO_LARGE,
 };
 
 function isRpcFallbackError(exception: unknown): exception is Error {
@@ -77,6 +81,16 @@ function extractValidationDetails(
   const msg = exceptionResponse.message;
   if (!Array.isArray(msg)) return undefined;
 
+  if (msg.length > 0 && typeof msg[0] === 'object') {
+    return flattenValidationErrors(msg as ClassValidatorErrorLike[]).map(
+      (issue) => ({
+        field: issue.field,
+        constraints: issue.constraints,
+        value: issue.value,
+      }),
+    );
+  }
+
   return msg.map((m: string) => {
     const field = m.split(' ')[0];
     return { field, message: m };
@@ -94,7 +108,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const requestId =
       ((request as unknown as Record<string, unknown>).correlationId as
-        string | undefined) ??
+        | string
+        | undefined) ??
       (request.headers['x-correlation-id'] as string) ??
       null;
     const timestamp = new Date().toISOString();

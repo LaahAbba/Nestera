@@ -57,12 +57,11 @@ describe('AdminTransactionsController', () => {
         items: [],
         meta: {
           page: 1,
-          limit: 10,
+          pageSize: 10,
           totalItemCount: 0,
           pageCount: 0,
           hasPreviousPage: false,
           hasNextPage: false,
-          pageSize: 10,
           nextCursor: null,
         },
       };
@@ -87,12 +86,11 @@ describe('AdminTransactionsController', () => {
         items: [],
         meta: {
           page: 1,
-          limit: 10,
+          pageSize: 10,
           totalItemCount: 0,
           pageCount: 0,
           hasPreviousPage: false,
           hasNextPage: false,
-          pageSize: 10,
           nextCursor: null,
         },
       };

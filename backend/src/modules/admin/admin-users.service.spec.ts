@@ -102,7 +102,7 @@ describe('AdminUsersService', () => {
         limit: 20,
         skip: 0,
       } as any);
-      expect(result.data[0].transactionCount).toBe(10);
+      expect(result.items[0].transactionCount).toBe(10);
     });
   });
 

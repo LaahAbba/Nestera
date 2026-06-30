@@ -142,7 +142,9 @@ export class AdminAuditLogsController {
   }
 
   @Post('export')
-  @ApiOperation({ summary: 'Queue audit log export - returns job ID for async retrieval' })
+  @ApiOperation({
+    summary: 'Queue audit log export - returns job ID for async retrieval',
+  })
   @ApiResponse({
     status: 202,
     description: 'Export job queued',
@@ -172,7 +174,8 @@ export class AdminAuditLogsController {
 
     return {
       jobId: job.id,
-      message: 'Export job queued. Check status at /admin/audit-logs/export/status/:jobId',
+      message:
+        'Export job queued. Check status at /admin/audit-logs/export/status/:jobId',
     };
   }
 
@@ -189,7 +192,9 @@ export class AdminAuditLogsController {
     },
   })
   async getExportStatus(@Param('jobId') jobId: string) {
-    const queue = this.jobQueueService['getQueue'](QUEUE_NAMES.AUDIT_LOG_EXPORT);
+    const queue = this.jobQueueService['getQueue'](
+      QUEUE_NAMES.AUDIT_LOG_EXPORT,
+    );
     if (!queue) {
       return { status: 'error', message: 'Queue not available' };
     }
@@ -200,7 +205,7 @@ export class AdminAuditLogsController {
     }
 
     const state = await job.getState();
-    const result = state === 'completed' ? await job.getReturnValue() : null;
+    const result = state === 'completed' ? job.returnvalue : null;
 
     return {
       status: state,
@@ -220,7 +225,9 @@ export class AdminAuditLogsController {
     },
   })
   async downloadExport(@Param('jobId') jobId: string, @Res() res: Response) {
-    const queue = this.jobQueueService['getQueue'](QUEUE_NAMES.AUDIT_LOG_EXPORT);
+    const queue = this.jobQueueService['getQueue'](
+      QUEUE_NAMES.AUDIT_LOG_EXPORT,
+    );
     if (!queue) {
       return res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
         message: 'Queue not available',
@@ -241,7 +248,7 @@ export class AdminAuditLogsController {
       });
     }
 
-    const result = await job.getReturnValue();
+    const result = job.returnvalue;
     const format = job.data.format;
     const contentType = format === 'json' ? 'application/json' : 'text/csv';
     const filename = `audit-logs-${new Date().toISOString().split('T')[0]}.${format}`;

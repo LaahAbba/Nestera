@@ -10,6 +10,7 @@ import { BlockchainProcessor } from './processors/blockchain.processor';
 import { ReportProcessor } from './processors/report.processor';
 import { DisputeEvidenceProcessor } from './processors/dispute-evidence.processor';
 import { AvatarProcessor } from './processors/avatar.processor';
+import { AuditLogExportProcessor } from './processors/audit-log-export.processor';
 import { JobQueueService } from './job-queue.service';
 import { JobQueueController } from './job-queue.controller';
 import { DisputeEvidence } from '../disputes/entities/dispute-evidence.entity';
@@ -18,10 +19,6 @@ import { User } from '../user/entities/user.entity';
 import { ReportSchedule } from '../reports/entities/report-schedule.entity';
 import { StorageModule } from '../storage/storage.module';
 import { ReportsModule } from '../reports/reports.module';
-import { AuditLogExportProcessor } from './processors/audit-log-export.processor';
-import { JobQueueService } from './job-queue.service';
-import { JobQueueController } from './job-queue.controller';
-import { DisputeEvidence } from '../disputes/entities/dispute-evidence.entity';
 import { AuditLog } from '../../common/entities/audit-log.entity';
 
 const defaultJobOptions = {
@@ -45,6 +42,8 @@ const defaultJobOptions = {
     ]),
     TypeOrmModule.forFeature([Notification, AuditLog]),
     TypeOrmModule.forFeature([DisputeEvidence]),
+      AuditLog,
+    ]),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

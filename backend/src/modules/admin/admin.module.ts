@@ -84,8 +84,6 @@ import { JobQueueModule } from '../job-queue/job-queue.module';
     AdminTransactionsController,
     AdminDisputesController,
     AdminAuditLogsController,
-    AdminAuditLogsController,
-    AdminTransactionsController,
   ],
   providers: [
     AdminUsersService,

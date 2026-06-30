@@ -69,6 +69,18 @@ export class TooManyRequestsResponseDto {
     example: 60,
   })
   retryAfter: number;
+
+  @ApiProperty({
+    description: 'ISO timestamp indicating when the rate limit resets',
+    example: '2026-06-29T12:35:00.000Z',
+  })
+  resetAt: string;
+
+  @ApiProperty({
+    description: 'HTTP method and route that triggered the limit',
+    example: 'POST /api/v1/auth/login',
+  })
+  endpoint: string;
 }
 
 export class ValidationErrorResponseDto extends ErrorResponseDto {
@@ -83,36 +95,36 @@ export class ValidationErrorResponseDto extends ErrorResponseDto {
 }
 
 /** Generic paginated wrapper. */
- export class PaginatedMetaDto {
-   @ApiProperty({ example: 1 })
-   page: number;
+export class PaginatedMetaDto {
+  @ApiProperty({ example: 1 })
+  page: number;
 
-   @ApiProperty({ example: 20 })
-   pageSize: number;
+  @ApiProperty({ example: 20 })
+  pageSize: number;
 
-   @ApiProperty({ example: 150 })
-   itemCount: number;
+  @ApiProperty({ example: 150 })
+  itemCount: number;
 
-   @ApiProperty({ example: 8 })
-   pageCount: number;
+  @ApiProperty({ example: 8 })
+  pageCount: number;
 
-   @ApiProperty({ example: false })
-   hasPreviousPage: boolean;
+  @ApiProperty({ example: false })
+  hasPreviousPage: boolean;
 
-   @ApiProperty({ example: true })
-   hasNextPage: boolean;
+  @ApiProperty({ example: true })
+  hasNextPage: boolean;
 
-   @ApiProperty({ example: 'cursor-token-for-next-page', required: false })
-   nextCursor?: string | null;
- }
+  @ApiProperty({ example: 'cursor-token-for-next-page', required: false })
+  nextCursor?: string | null;
+}
 
- export class PaginatedResponseDto<T> {
-   @ApiProperty({ isArray: true, description: 'Items on the current page' })
-   items: T[];
+export class PaginatedResponseDto<T> {
+  @ApiProperty({ isArray: true, description: 'Items on the current page' })
+  items: T[];
 
-   @ApiProperty({ type: () => PaginatedMetaDto })
-   meta: PaginatedMetaDto;
- }
+  @ApiProperty({ type: () => PaginatedMetaDto })
+  meta: PaginatedMetaDto;
+}
 
 export class SuccessMessageDto {
   @ApiProperty({ example: true })

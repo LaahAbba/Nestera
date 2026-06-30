@@ -47,6 +47,8 @@ export interface AvatarJobData {
   storagePath: string;
   mimeType: string;
   originalFilename: string;
+}
+
 export interface AuditLogExportJobData {
   filters: {
     actor?: string;
@@ -157,10 +159,11 @@ export class JobQueueService {
     });
     this.logger.debug(
       `Queued avatar processing job ${job.id} for uploadId=${data.uploadId} userId=${data.userId}`,
-  async addAuditLogExportJob(
-    data: AuditLogExportJobData,
-    opts?: JobsOptions,
-  ) {
+    );
+    return job;
+  }
+
+  async addAuditLogExportJob(data: AuditLogExportJobData, opts?: JobsOptions) {
     const job = await this.auditLogExportQueue.add(
       JOB_NAMES.EXPORT_AUDIT_LOGS,
       data,
